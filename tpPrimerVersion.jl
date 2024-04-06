@@ -7,7 +7,7 @@ using InteractiveUtils
 # ╔═╡ d1493290-93b6-451b-8974-eba1b68b7c0b
 begin
 	using LinearAlgebra, PlutoUI, Plots, DelimitedFiles
-	TableOfContents(), Distances
+	TableOfContents()
 end
 
 # ╔═╡ 2532cd20-dd4c-11ee-2500-c37c88f25389
@@ -75,11 +75,17 @@ end
 
 
 # ╔═╡ 7cebfd3c-33a0-4b5f-b674-45a2e4240048
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 path = "C:\\Users\\ezequ\\OneDrive\\Documentos\\Facultad\\Optimizacion\\tp1\\datos"	
 datos = procesarDatos(path)
 	
 end
+  ╠═╡ =#
+
+# ╔═╡ a31db036-1fba-4e84-861c-901998c8fc16
+datos = readdlm("datos1.csv",',')
 
 # ╔═╡ 5ce04a69-c867-47dd-b01b-43db26e0e2b3
 function plot_datos(datos)
@@ -88,7 +94,7 @@ function plot_datos(datos)
 end
 
 # ╔═╡ a37084b4-aecd-4eed-b020-c1dd29b87e75
-plot_datos(datos[1])
+plot_datos(datos)
 
 # ╔═╡ 86f2a5d8-9901-47a3-81e2-9c5f351a25ae
 md"""
@@ -133,34 +139,16 @@ Implementar una función `ajuste_alg` que reciba como argumento los datos y resu
 
 """
 
-# ╔═╡ cc387c85-14f5-4aa0-909d-e4c7d24a6232
-md"# Aca se rompe las dimensiones de Q R quedan mal"
-
-# ╔═╡ 9236bf84-6d6a-4bc2-999b-89bada49fe4a
-md"# se resolvio el tema de las dimensiones hay dos implementaciones que deberian ser equivalentes pero por algun motivo dan muy distinto"
-
-# ╔═╡ 6c4a78ec-6392-48dd-82c8-70d67f50997f
-function resolver_sistema(datos)
-	A,b = def_problem(datos)
-	
-	q,r = qr(A)
-	Q = q[:,1:3]
-	c = Q' * b
-	x = c \ r
-	return x
-end
-
 # ╔═╡ cc102958-a6ae-443c-94cc-76bb6c8c559e
-function resolver_sistema2(datos)
+function resolver_sistema(datos)
 	A,b = def_problem(datos)
 	aux = qr(A)
 	Q = Matrix(aux.Q)
 	R = aux.R
 	c = Q'*b
-	#y = c' / R  # No tiene sentido matematico
-	#z = c / R	# Problemas de dimensiones
-	x =  inv(R)* c # No tiene sentido numerico deberia ser el resultado correcto iguak anda mal
-	return x #,y,z
+
+	x =  R\c
+	return x 
 end
 
 # ╔═╡ 7c589215-5bfa-4cc3-a05d-c7bb6cb0c7e7
@@ -172,13 +160,13 @@ Implementar una función `plot_algebraico` que tome los coeficientes encontrados
 
 # ╔═╡ adbb9db9-dfe0-44dd-a3df-c94512a08231
 
-function plot_algebraico(datos)
-    a, b, c = resolver_sistema2(datos)
+function plot_algebraico(datos,metodo)
+    a, b, c = metodo(datos)
     
     # Calcular las coordenadas del centro y el radio del círculo ajustado
-    centro_x = -a
-    centro_y = -b
-    radio = sqrt(a^2 + b^2 - c)
+    centro_x = a
+    centro_y = b
+    radio = sqrt(c + a^2 + b^2 )
     
     # Crear una figura
     scatter(datos[:, 1], datos[:, 2], label="Datos", xlabel="X", ylabel="Y", legend=:bottomright)
@@ -194,7 +182,7 @@ end
 
 
 # ╔═╡ 7acf6053-6ad0-476c-b2c1-b3989f4b899c
-plot_algebraico(datos[3])
+plot_algebraico(datos,resolver_sistema)
 
 # ╔═╡ 0770b04d-c4dd-4aaf-886e-ef451e876f92
 md"""
@@ -212,6 +200,88 @@ md"""
 md"""
 ## Ajuste geométrico
 """
+
+# ╔═╡ 217120b1-8e05-4348-9a99-fde8f5be7efd
+md"""
+### Ejercicio 6
+
+Implementar las siguientes funciones:
+1. una función que retorne el vector ${\bf d}(\theta)$, 
+2. una función que retorne el valor de $F$
+3. una función que calcule la matriz diferencial $J$ de ${\bf d}$ dependiendo del $\theta_0$.
+"""
+
+# ╔═╡ 4510e9da-6f55-4238-8197-eb51a194911b
+begin function d₀(θ,datos)
+	a,b,r = θ
+	res = []
+	n = size(datos)[1]
+	for i in range(1,n)
+		xᵢ = datos[:,1][i]
+		yᵢ = datos[:,2][i]
+		dᵢ = sqrt((xᵢ-a)^2 + (yᵢ-b)^2) - r
+		push!(res,dᵢ)
+	end
+	return res
+	
+end 
+end
+
+
+# ╔═╡ 851dc0b8-28aa-4dfc-970e-8cfabd453416
+function F(d_θ)
+ return sum(d_θ.^2)
+end
+
+
+# ╔═╡ 7be6d88c-d537-4bb9-92c5-03e56625a5d7
+md"calculamos el gradiente de  
+```math
+d_i = \sqrt{(x_i-a)^2+(y_i-b)^2}-r,
+``` a mano"
+
+# ╔═╡ bcfc4789-031f-4adb-8838-d588e0a1b9b2
+function gradiente_di(θ,x,y)
+	a,b,r = θ
+	raiz = (sqrt((x-a)^2 + (y-b)^2))
+	da = (a - x) / raiz
+	db = (b - y) / raiz
+	return (da,db,-1) 
+end
+
+# ╔═╡ 4659c13d-ee5b-4c2e-8b08-21dc1f2d924e
+function jacobiano(θ,datos)
+	x = datos[:,1]
+	y = datos[:,2]
+	J = []
+	normas = []
+	for i in range(1,length(x))
+		grad = gradiente_di(θ,x[i],y[i])
+		push!(J,grad)
+		push!(normas,norm(grad))
+	end
+return J , normas
+end
+
+# ╔═╡ 4330e320-3dcc-40ab-9f2f-b5f81ab4ed8a
+norm([3,4])
+
+# ╔═╡ f98dbf30-8712-4bce-adec-dce0f2227fe4
+function Σ⁺(Σ)
+	res = []
+	for σ in Σ
+		push!(res,1\σ)
+	end
+	return diagm(res)
+end
+
+# ╔═╡ 9d0816cb-aa3f-418c-88d3-6cc8ac9e80de
+function A⁺(A)
+	# devuelve la condicion porque la pide el solver, asi no la calculo dos veces , oh well
+ u,s,v = svd(A)
+ Σ⁺ =  Σ⁺(s)
+ return v * Σ⁺ * u' , cond(s)
+end
 
 # ╔═╡ 0f451e7e-6d37-4776-b8bf-23d3d4d98362
 md"""
@@ -251,85 +321,49 @@ J(\theta_0){\bf h} = -{\bf d}(\theta_0),
 toma $\theta_1 = \theta_0 + {\bf h}$, e itera el procedimiento, calculando una sucesión $\theta_i$ y deteniéndose cuando se satisface algún criterio de convergencia. 
 """
 
-# ╔═╡ 217120b1-8e05-4348-9a99-fde8f5be7efd
-md"""
-### Ejercicio 6
+# ╔═╡ 5872f27f-7705-4b8e-b859-355b883c8948
+function ajuste_geom(θ₀,datos,max_iters,error)#,distancia)
+   # distancia es para ver entre el paso k y el k+1
+	θₖ   = θ₀
+	θₖ₊₁ = []
 
-Implementar las siguientes funciones:
-1. una función que retorne el vector ${\bf d}(\theta)$, 
-2. una función que retorne el valor de $F$
-3. una función que calcule la matriz diferencial $J$ de ${\bf d}$ dependiendo del $\theta_0$.
-"""
+	for k in 1:max_iters
 
-# ╔═╡ 4510e9da-6f55-4238-8197-eb51a194911b
-begin function d₀(θ,datos)
-	a,b,r = θ
-	res = []
-	n = size(datos)[1]
-	println(n)
-	for i in range(1,n)
-		xᵢ = datos[:,1][i]
-		yᵢ = datos[:,2][i]
-		dᵢ = sqrt((xᵢ-a)^2 + (yᵢ-b)^2) - r
-		push!(res,dᵢ)
-	end
-	return res
 	
-end 
-end
+	Jₖ  = jacobiano(θₖ,datos)
+	normaₖ = 2*norm()
+	A⁺ₖ , condicion = A⁺(Jₖ)
 
-
-# ╔═╡ 851dc0b8-28aa-4dfc-970e-8cfabd453416
-function F(d_θ)
- return sum(d_θ.^2)
-end
-
-
-# ╔═╡ 7be6d88c-d537-4bb9-92c5-03e56625a5d7
-md"calculamos el gradiente de  
-```math
-d_i = \sqrt{(x_i-a)^2+(y_i-b)^2}-r,
-``` a mano"
-
-# ╔═╡ bcfc4789-031f-4adb-8838-d588e0a1b9b2
-function gradiente_di(θ,x,y)
-	a,b,r = θ
-	raiz = (sqrt((x-a)^2 + (y-b)^2))
-	da = (a - x) / raiz
-	db = (b - y) / raiz
-	return (da,db,-1)
-end
-
-# ╔═╡ 4659c13d-ee5b-4c2e-8b08-21dc1f2d924e
-function jacobiano(θ,datos)
-	x = datos[:,1]
-	y = datos[:,2]
-	J = []
-	for i in range(1,length(x))
-		push!(J,gradiente_di(θ,x[i],y[i]))
+	h = A⁺ₖ * d₀(θₖ,datos)
+	
+	θₖ₊₁ = θₖ + h
+	
+	if condicion > 100
+		println("WARNING condicion de la matriz en la itereacion ",k,"es ",condicion)
 	end
-return J
-end
-
-# ╔═╡ f98dbf30-8712-4bce-adec-dce0f2227fe4
-function Σ⁺(Σ)
-	res = []
-	for σ in Σ
-		push!(res,1\σ)
+	if normaₖ < error #|| euclidean(θₖ,θₖ₊₁) < distancia
+		return θₖ₊₁ , k
 	end
-	return diagm(res)
+	end
+ 	
+	println("Número máximo de iteraciones alcanzado")
+    return θₖ
+
 end
 
-# ╔═╡ 9d0816cb-aa3f-418c-88d3-6cc8ac9e80de
-function A⁺(A)
-	# devuelve la condicion porque la pide el solver, asi no la calculo dos veces , oh well
- u,s,v = svd(A)
- Σ⁺ =  Σ⁺(s)
- return v * Σ⁺ * u' , cond(s)
+# ╔═╡ 506d133f-a524-46ac-b1b2-421179a9f2e6
+plot_algebraico(datos,ajuste_geom(resolver_sistema(datos),datos,1000,1e-6))
+
+# ╔═╡ 8edee461-82e6-40d0-811c-acff4d00fce1
+a = [1 1; 1 2]
+
+# ╔═╡ b6a3b94e-df7f-44a3-bffd-59db66033ced
+for i in (1:2)
+	 println(a[:i,:])
 end
 
-# ╔═╡ 76939fce-cd71-43a4-bced-56ff3a2862d9
-
+# ╔═╡ 7818242c-9c83-432b-b646-959cb59267d7
+ajuste_geom(resolver_sistema(datos),1000,1e-6)
 
 # ╔═╡ c9a2bf4d-e70b-4e54-a1d7-9e7c0e008da0
 md"""
@@ -420,63 +454,6 @@ md"""
 
 Comparar gráficamente los resultados obtenidos entre alguno de los últimos métodos descriptos y el metodo de Gauss-Newton puro para los casos donde la matriz $J$ resultante está mal condicionada.
 """
-
-# ╔═╡ 5872f27f-7705-4b8e-b859-355b883c8948
-function ajuste_geom(θ₀,datos,max_iters,error,distancia)
-   # distancia es para ver entre el paso k y el k+1
-	θₖ   = θ₀
-	θₖ₊₁ :: Any
-
-	for k in 1:max_iters
-
-	
-	Jₖ = jacobiano(θₖ,datos)
-	
-	A⁺ₖ , condicion = A⁺(J)
-
-	h = A⁺ₖ * d₀(θₖ,datos)
-	
-	θₖ₊₁ = θₖ + h
-	
-	if condicion > 100
-		println("WARNING condicion de la matriz en la itereacion ",k,"es ",condicion)
-	end
-	if F(d₀) < error || euclidean(θₖ,θₖ₊₁) < distancia
-		return θₖ₊₁ , k
-	end
-	end
- 	
-	println("Número máximo de iteraciones alcanzado")
-    return θₖ
-
-end
-
-# ╔═╡ fd2362da-5219-42df-9936-92cdf42c048e
-function ajuste_geom(θ₀, datos, max_iters, error, distancia)
-    θ_k = copy(θ₀)
-    
-    for iter in 1:max_iters
-        d_k = calcular_distancias(θ_k, datos)
-        J_k = jacobiano(θ_k, datos)
-        
-        if norm(d_k) < error
-            println("Convergencia alcanzada en la iteración ", iter)
-            return θ_k
-        end
-        
-        Δθ_k = calcular_correccion(J_k, d_k)
-        θ_k += Δθ_k
-        
-        if norm(Δθ_k) < distancia
-            println("Convergencia alcanzada en la iteración ", iter)
-            return θ_k
-        end
-    end
-    
-    println("Número máximo de iteraciones alcanzado")
-    return θ_k
-end
-
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -586,14 +563,14 @@ version = "1.1.0+0"
 
 [[deps.ConcurrentUtilities]]
 deps = ["Serialization", "Sockets"]
-git-tree-sha1 = "87944e19ea747808b73178ce5ebb74081fdf2d35"
+git-tree-sha1 = "6cbbd4d241d7e6579ab354737f4dd95ca43946e1"
 uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
-version = "2.4.0"
+version = "2.4.1"
 
 [[deps.Contour]]
-git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
+git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
-version = "0.6.2"
+version = "0.6.3"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
@@ -673,9 +650,9 @@ uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
 version = "2.13.93+0"
 
 [[deps.Format]]
-git-tree-sha1 = "f3cf88025f6d03c194d73f5d13fee9004a108329"
+git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
 uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
-version = "1.3.6"
+version = "1.3.7"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -732,9 +709,9 @@ version = "1.0.2"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "db864f2d91f68a5912937af80327d288ea1f3aee"
+git-tree-sha1 = "8e59b47b9dc525b70550ca082ce85bcd7f5477cd"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.3"
+version = "1.10.5"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -1018,9 +995,9 @@ version = "1.4.2"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "60e3045590bd104a16fefb12836c00c0ef8c7f8c"
+git-tree-sha1 = "3da7367955dcc5c54c1ba4d402ccdc09a1a3e046"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.0.13+0"
+version = "3.0.13+1"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1074,9 +1051,9 @@ version = "1.4.1"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "3c403c6590dd93b36752634115e20137e79ab4df"
+git-tree-sha1 = "3bdfa4fa528ef21287ef659a89d686e8a1bcb1a9"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.40.2"
+version = "1.40.3"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
@@ -1208,9 +1185,9 @@ version = "1.7.0"
 
 [[deps.StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "1d77abd07f617c4868c33d4f5b9e1dbb2643c9cf"
+git-tree-sha1 = "5cf7606d6cef84b543b483848d4ae08ad9832b21"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.34.2"
+version = "0.34.3"
 
 [[deps.SuiteSparse_jll]]
 deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
@@ -1238,9 +1215,9 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "3caa21522e7efac1ba21834a03734c57b4611c7e"
+git-tree-sha1 = "71509f04d045ec714c4748c785a59045c3736349"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.10.4"
+version = "0.10.7"
 weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
@@ -1314,9 +1291,9 @@ version = "1.31.0+0"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "07e470dabc5a6a4254ffebc29a1b3fc01464e105"
+git-tree-sha1 = "532e22cf7be8462035d092ff21fada7527e2c488"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.12.5+0"
+version = "2.12.6+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
@@ -1326,9 +1303,9 @@ version = "1.1.34+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "31c421e5516a6248dfb22c194519e37effbf1f30"
+git-tree-sha1 = "ac88fb95ae6447c8dda6a5503f3bafd496ae8632"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.6.1+0"
+version = "5.4.6+0"
 
 [[deps.Xorg_libICE_jll]]
 deps = ["Libdl", "Pkg"]
@@ -1481,9 +1458,9 @@ version = "1.2.13+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "49ce682769cd5de6c72dcf1b94ed7790cd08974c"
+git-tree-sha1 = "e678132f07ddb5bfa46857f0d7620fb9be675d3b"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
-version = "1.5.5+0"
+version = "1.5.6+0"
 
 [[deps.eudev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "gperf_jll"]
@@ -1593,14 +1570,12 @@ version = "1.4.1+1"
 # ╟─dc616049-f6d3-4478-983e-529dd5be1982
 # ╠═3b93c32c-992d-4a5e-9122-336a91fcdbba
 # ╠═7cebfd3c-33a0-4b5f-b674-45a2e4240048
+# ╠═a31db036-1fba-4e84-861c-901998c8fc16
 # ╠═5ce04a69-c867-47dd-b01b-43db26e0e2b3
 # ╠═a37084b4-aecd-4eed-b020-c1dd29b87e75
 # ╟─86f2a5d8-9901-47a3-81e2-9c5f351a25ae
 # ╠═ce5a34f7-3fa4-405c-bba2-099274d8e8e5
 # ╟─d5cc8b5c-b252-4587-a0f9-e3474159afbb
-# ╟─cc387c85-14f5-4aa0-909d-e4c7d24a6232
-# ╟─9236bf84-6d6a-4bc2-999b-89bada49fe4a
-# ╠═6c4a78ec-6392-48dd-82c8-70d67f50997f
 # ╠═cc102958-a6ae-443c-94cc-76bb6c8c559e
 # ╟─7c589215-5bfa-4cc3-a05d-c7bb6cb0c7e7
 # ╠═adbb9db9-dfe0-44dd-a3df-c94512a08231
@@ -1608,19 +1583,22 @@ version = "1.4.1+1"
 # ╟─0770b04d-c4dd-4aaf-886e-ef451e876f92
 # ╟─3640e8fd-1b6e-4c4a-9082-38b63e2bbf44
 # ╟─c8df4623-2e32-4615-836f-9c94b801fcf9
-# ╠═0f451e7e-6d37-4776-b8bf-23d3d4d98362
 # ╟─217120b1-8e05-4348-9a99-fde8f5be7efd
 # ╠═4510e9da-6f55-4238-8197-eb51a194911b
 # ╠═851dc0b8-28aa-4dfc-970e-8cfabd453416
 # ╟─7be6d88c-d537-4bb9-92c5-03e56625a5d7
 # ╠═bcfc4789-031f-4adb-8838-d588e0a1b9b2
 # ╠═4659c13d-ee5b-4c2e-8b08-21dc1f2d924e
+# ╠═4330e320-3dcc-40ab-9f2f-b5f81ab4ed8a
 # ╠═f98dbf30-8712-4bce-adec-dce0f2227fe4
 # ╠═9d0816cb-aa3f-418c-88d3-6cc8ac9e80de
-# ╠═76939fce-cd71-43a4-bced-56ff3a2862d9
+# ╟─0f451e7e-6d37-4776-b8bf-23d3d4d98362
 # ╠═5872f27f-7705-4b8e-b859-355b883c8948
+# ╠═506d133f-a524-46ac-b1b2-421179a9f2e6
+# ╠═8edee461-82e6-40d0-811c-acff4d00fce1
+# ╠═b6a3b94e-df7f-44a3-bffd-59db66033ced
+# ╠═7818242c-9c83-432b-b646-959cb59267d7
 # ╟─c9a2bf4d-e70b-4e54-a1d7-9e7c0e008da0
-# ╠═fd2362da-5219-42df-9936-92cdf42c048e
 # ╟─9e2ef2ba-3414-4a42-b340-83462378f19c
 # ╟─889aa225-8bd9-4706-9c49-6418f4bc4ef1
 # ╟─9bd5c0e1-9a3a-461d-ad77-fd633ce728eb
