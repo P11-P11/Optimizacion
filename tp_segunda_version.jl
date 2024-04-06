@@ -157,6 +157,12 @@ Implementar una función `ajuste_alg` que reciba como argumento los datos y resu
 
 """
 
+# ╔═╡ 62b11065-9028-41e1-ba1a-3b2aeeb4e4d1
+function ajuste_alg(datos)
+	A,b = def_problem(datos)
+	return qr(A)\b
+end
+
 # ╔═╡ 7c589215-5bfa-4cc3-a05d-c7bb6cb0c7e7
 md"""
 ### Ejercicio 4
@@ -188,7 +194,7 @@ end
 
 
 # ╔═╡ fcfec6c3-9695-4c76-b33e-725462d573f1
-plot_algebraico(datos[1],resolver_sistema)
+plot_algebraico(datos[1],ajuste_alg)
 
 # ╔═╡ 0770b04d-c4dd-4aaf-886e-ef451e876f92
 md"""
@@ -201,7 +207,7 @@ Hacer los gráficos correspondientes a cada conjuntos de datos.
 @bind i Slider(1:1:10)
 
 # ╔═╡ f90ee739-941d-493b-bf85-ba6c3a7d7c95
-plot_algebraico(datos[i], resolver_sistema)
+plot_algebraico(datos[i], ajuste_alg)
 
 
 # ╔═╡ 4ef1fc7e-ec3a-46a9-9014-dc1809395684
@@ -383,12 +389,18 @@ md"""
 Realizar un plot del ajuste geometrico obtenido junto con el ajuste algebraico y los datos. ¿Observa alguna mejora?
 """
 
+# ╔═╡ 62bffca2-f49a-4bce-aecf-069d9a837a6d
+function metodo_geometrico(datos)
+titaCero = ajuste_alg(datos)
+return ajuste_geom(titaCero,datos)
+end
+
 # ╔═╡ 1a6e2bd3-8384-416d-8d12-b6ef44e6ecc9
 @bind j Slider(1:1:10)
 
 # ╔═╡ ea43429a-6f80-4398-a3fb-7db3ee2a33b6
 begin 
-tita_alg  = resolver_sistema(datos[j])
+tita_alg  = ajuste_alg(datos[j])
 tita_geom = ajuste_geom(tita_alg,datos[j])
 end
 
@@ -457,18 +469,6 @@ md"""
 
 Comparar gráficamente los resultados obtenidos entre alguno de los últimos métodos descriptos y el metodo de Gauss-Newton puro para los casos donde la matriz $J$ resultante está mal condicionada.
 """
-
-# ╔═╡ 62bffca2-f49a-4bce-aecf-069d9a837a6d
-function metodo_geometrico(datos)
-titaCero = resolver_sistema(datos)
-return ajuste_geom(titaCero,datos)
-end
-
-# ╔═╡ 62b11065-9028-41e1-ba1a-3b2aeeb4e4d1
-function metodo_geometrico(datos)
-	A,b = def_problem(datos)
-	return qr(A)\b
-end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
