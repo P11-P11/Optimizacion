@@ -88,8 +88,7 @@ end
 begin
 path = "C:\\Users\\ezequ\\OneDrive\\Documentos\\Facultad\\Optimizacion\\tp1\\datos"	
 datos = procesarDatos(path)
-	
-end
+end;
 
 # ╔═╡ 722a9501-a1b0-4d74-90b3-28c99776f1ad
 function plot_datos(datos)
@@ -100,7 +99,7 @@ end
 # ╔═╡ e3140c2a-e62c-4795-9c4d-4efd3f6a1142
 plot_datos(datos[1])
 
-# ╔═╡ 86f2a5d8-9901-47a3-81e2-9c5f351a25ae
+# ╔═╡ b432a4a7-6ec1-4ffc-a7cb-829f8889bf39
 md"""
 ### Ejercicio 2
 
@@ -124,8 +123,8 @@ b = x^2+y^2
 	y² = datos[:, 2].^ 2
 	x = datos[:, 1].*2
 	y = datos[:, 2].*2
-	menos = fill(1,n)	
-    A = hcat(x, y, menos)
+	unos = ones(n)
+    A = hcat(x, y, unos)
     b = x² + y²
 
     return A, b
@@ -170,31 +169,20 @@ md"""
 Implementar una función `plot_algebraico` que tome los coeficientes encontrados para un conjunto de datos y grafique el ajuste junto a los puntos del conjunto.
 """
 
-# ╔═╡ 2e81ffa8-4f9a-4208-8fe0-dc21237b7cb7
-
-function plot_algebraico(datos,metodo)
-    a, b, c = metodo(datos)
-    
-    # Calcular las coordenadas del centro y el radio del círculo ajustado
-    centro_x = a
+# ╔═╡ ef562329-0bdc-4250-8721-7c9aa3b54db8
+function plot_circulo(a,b,radio,datos,metodo)
+	centro_x = a
     centro_y = b
-    radio = sqrt(c + a^2 + b^2 )
-    
     # Crear una figura
-    scatter(datos[:, 1], datos[:, 2], label="Datos", xlabel="X", ylabel="Y", legend=:bottomright)
+    scatter(datos[:, 1], datos[:, 2],
+		label="Datos", xlabel="X", ylabel="Y", size=(550, 450) ,legend=:best)
     
     # Dibujar el círculo ajustado
     θ = LinRange(0, 2π, 100)
     x_circ = centro_x .+ radio * cos.(θ)
     y_circ = centro_y .+ radio * sin.(θ)
-    plot!(x_circ, y_circ, label="Ajuste")
-    
-    # Mostrar la figura
+    plot!(x_circ, y_circ, label="Ajuste " * metodo)
 end
-
-
-# ╔═╡ fcfec6c3-9695-4c76-b33e-725462d573f1
-plot_algebraico(datos[1],ajuste_alg)
 
 # ╔═╡ 0770b04d-c4dd-4aaf-886e-ef451e876f92
 md"""
@@ -206,11 +194,7 @@ Hacer los gráficos correspondientes a cada conjuntos de datos.
 # ╔═╡ ce9e5ddb-1155-4b0c-a2ae-0b90004c84b7
 @bind i Slider(1:1:10)
 
-# ╔═╡ f90ee739-941d-493b-bf85-ba6c3a7d7c95
-plot_algebraico(datos[i], ajuste_alg)
-
-
-# ╔═╡ 4ef1fc7e-ec3a-46a9-9014-dc1809395684
+# ╔═╡ 34bc4c49-8eb2-4704-84c4-14fccce41de8
 print("Dataset numero: ",i)
 
 # ╔═╡ 3640e8fd-1b6e-4c4a-9082-38b63e2bbf44
@@ -294,7 +278,7 @@ function F(d₀)
 end
 
 
-# ╔═╡ b7dfed28-086a-48ba-99f5-53c74119d544
+# ╔═╡ 911a43cb-3acc-4fb3-8130-109a096461ef
 begin
 function ∇dᵢ(θ,x,y)
 	a,b,r = θ
@@ -308,17 +292,16 @@ function jacobiano(θ, datos)
 	n = size(datos)[1]
 	m = length(θ)
     J = Matrix{Float64}(undef, n, m)  
-    Σ_grads = zeros(m)
     for i in 1:n
-        grad      = ∇dᵢ(θ, datos[i, 1], datos[i, 2])
-
-		J[i, :]   = grad  # Agregar la fila grad al jacobiano J
+		J[i, :]   = ∇dᵢ(θ, datos[i, 1], datos[i, 2])
         
-		Σ_grads += grad
     end
-    return J, 2*norm(Σ_grads)
+    return J
 end
 end
+
+# ╔═╡ 7b61e0ec-99ab-4c8d-8d1a-90b3a9026ce9
+md""" La funcion que obtiene la pseudo inversa tambien calcula la condicion porque si lo hacemos en ese momento podemos calcularla en O(1) """
 
 # ╔═╡ 7722de54-4903-4fcc-9a7b-d3f6dcf47513
 begin
@@ -326,7 +309,7 @@ function Σ⁺(Σ)
     return diagm([1 / σ for σ in Σ])
 end
 function A⁺(A)
-	# devuelve la condicion porque la pide el solver, asi no la calculo dos veces , oh well
+	
  u,s,v = svd(A)
  Σ⁺_ =  Σ⁺(s)
  return v * Σ⁺_ * u' , s[1]/s[length(s)] # condicion
@@ -346,39 +329,49 @@ a través de la descomposición en valores singulares de $J$ ($J=U\Sigma V^t$). 
 **Sugerencia:** El proceso iterativo debe comenzar con algun $\theta_0$. Este puede tomarlo como la solución del algebraico.
 """
 
-# ╔═╡ e1bb0a80-690a-4f8b-8aab-c19fc2eb74ee
-md"# La norma del funcional F no se achica"
+# ╔═╡ cf96edec-64da-44dc-989e-c76f13f31fe2
+md"""Como criterio de parada usamos que h se vaya a cero, como observacion agregamos que es equivalente a ver si la sucesion de θₖ se hace de cauchy"""
 
 # ╔═╡ 5889a13c-0b08-4542-ac79-e684575ad606
-function ajuste_geom(θ₀,datos,max_iters = 1000,error = 1e-6)#,distancia)
-   # distancia es para ver entre el paso k y el k+1
+function ajuste_geom(θ₀,datos,max_iters = 10_000,error = 1e-9)
 	θₖ   = θ₀
 	θₖ₊₁ = θₖ 
 
 	for k in 1:max_iters
 
 	
-	Jₖ , normaₖ  = jacobiano(θₖ,datos)
+	Jₖ = jacobiano(θₖ,datos)
 
 	A⁺ₖ , condicion = A⁺(Jₖ)
 
-	d = d₀(θₖ,datos)
+	#d = d₀(θₖ,datos)
 
-	h = A⁺ₖ * d
+	h = A⁺ₖ * d₀(θₖ,datos)
 	
 	θₖ₊₁ = θₖ - h
-	
-	if condicion > 100
-		println("WARNING condicion de la matriz en la itereacion ",k,"es ",condicion)
-	end
+	θₖ = θₖ₊₁
 
-	if norm(d) < error #|| euclidean(θₖ,θₖ₊₁) < distancia
-		return θₖ₊₁ , k
+	
+		
+	if condicion > 100
+		println("WARNING condicion de la matriz en la itereacion ",k," es ",condicion)
+	end
+		
+	if condicion > 1e15
+		print("La condicion de la matriz es mayor a 1e15")
+		println(" "," el problema genera inestabilidad en LAPACK, retornamos θ₀ ")
+		
+		return θ₀ , k
+		
+	end
+		
+	if norm(h) < error 
+		return θₖ₊₁ , k 
 	end
  	
-	println("Número máximo de iteraciones alcanzado")
-    return θₖ₊₁'
-end
+	end
+	    return θₖ₊₁ , max_iters
+
 end
 
 
@@ -391,28 +384,48 @@ Realizar un plot del ajuste geometrico obtenido junto con el ajuste algebraico y
 
 # ╔═╡ 62bffca2-f49a-4bce-aecf-069d9a837a6d
 function metodo_geometrico(datos)
-titaCero = ajuste_alg(datos)
-return ajuste_geom(titaCero,datos)
+	a,b,c = ajuste_alg(datos)
+	r = sqrt(c + a^2 + b^2)
+	return ajuste_geom([a,b,r],datos)
 end
 
-# ╔═╡ 1a6e2bd3-8384-416d-8d12-b6ef44e6ecc9
+# ╔═╡ 1ae9f8c2-8744-4839-a4c1-4fb63380a68a
+function plot_algebraico(datos, metodo)
+    if metodo == "algebraico"
+        a, b, c = ajuste_alg(datos)
+        
+        radio = sqrt(c + a^2 + b^2)
+
+    else
+		aux = metodo_geometrico(datos)
+        a, b, radio = aux[1]
+		k = aux[2]
+		if k != 10_000
+			println("El metodo geometrico convergio en ",k," pasos" )
+		else
+			println(k,", el número máximo de iteraciones fue alcanzado")
+		
+  
+    end
+	end
+	plot_circulo(a,b,radio,datos,metodo)
+    
+end
+
+
+# ╔═╡ 787d3422-75e8-4a6b-860a-f02af62d1ca5
+plot_algebraico(datos[i], "algebraico")
+
+
+# ╔═╡ 82eadcaa-7e48-4ff7-9232-b6e3dc88e680
 @bind j Slider(1:1:10)
 
-# ╔═╡ ea43429a-6f80-4398-a3fb-7db3ee2a33b6
-begin 
-tita_alg  = ajuste_alg(datos[j])
-tita_geom = ajuste_geom(tita_alg,datos[j])
-end
-
-# ╔═╡ 1c4315c4-aa9f-4fc7-a748-3b0e1ad82a8f
-tita_alg
-
-# ╔═╡ c8d0d3fc-42f0-4e82-9cca-9429a6b30166
-plot_algebraico(datos[j], metodo_geometrico)
+# ╔═╡ 897ee182-6b54-4a11-a906-f99aa231c3e8
+plot_algebraico(datos[j], "geometrico")
 
 
-# ╔═╡ 8d08439d-9870-41e0-ae17-d0654b158cf4
-md"# Tiene que dar horrible?"
+# ╔═╡ f4799591-4c76-403b-b528-a15cf07d13fa
+print("Dataset numero: ",j)
 
 # ╔═╡ 9bd5c0e1-9a3a-461d-ad77-fd633ce728eb
 md"""
@@ -1583,40 +1596,39 @@ version = "1.4.1+1"
 # ╟─e6e60a47-3396-46ab-af1f-e4ab35216d46
 # ╠═d1493290-93b6-451b-8974-eba1b68b7c0b
 # ╟─dc616049-f6d3-4478-983e-529dd5be1982
-# ╠═377661f1-0129-4e23-b82a-34fc0773b21c
+# ╟─377661f1-0129-4e23-b82a-34fc0773b21c
 # ╠═ab66ff6b-4882-4ac0-b0ad-a9a18863c4df
-# ╠═722a9501-a1b0-4d74-90b3-28c99776f1ad
+# ╟─722a9501-a1b0-4d74-90b3-28c99776f1ad
 # ╠═e3140c2a-e62c-4795-9c4d-4efd3f6a1142
-# ╟─86f2a5d8-9901-47a3-81e2-9c5f351a25ae
+# ╟─b432a4a7-6ec1-4ffc-a7cb-829f8889bf39
 # ╠═b36b606c-8058-4f60-8df3-35a7e8501983
 # ╟─c2afedbc-e638-4265-9c6b-7e4db87510d4
 # ╟─d5cc8b5c-b252-4587-a0f9-e3474159afbb
 # ╠═62b11065-9028-41e1-ba1a-3b2aeeb4e4d1
 # ╟─7c589215-5bfa-4cc3-a05d-c7bb6cb0c7e7
-# ╠═fcfec6c3-9695-4c76-b33e-725462d573f1
-# ╠═2e81ffa8-4f9a-4208-8fe0-dc21237b7cb7
+# ╟─ef562329-0bdc-4250-8721-7c9aa3b54db8
+# ╠═1ae9f8c2-8744-4839-a4c1-4fb63380a68a
 # ╟─0770b04d-c4dd-4aaf-886e-ef451e876f92
 # ╠═ce9e5ddb-1155-4b0c-a2ae-0b90004c84b7
-# ╠═f90ee739-941d-493b-bf85-ba6c3a7d7c95
-# ╠═4ef1fc7e-ec3a-46a9-9014-dc1809395684
+# ╠═787d3422-75e8-4a6b-860a-f02af62d1ca5
+# ╠═34bc4c49-8eb2-4704-84c4-14fccce41de8
 # ╟─3640e8fd-1b6e-4c4a-9082-38b63e2bbf44
 # ╟─c8df4623-2e32-4615-836f-9c94b801fcf9
 # ╟─0f451e7e-6d37-4776-b8bf-23d3d4d98362
 # ╟─217120b1-8e05-4348-9a99-fde8f5be7efd
 # ╠═b14153cb-4c8e-472a-ab0c-499534c3285a
 # ╠═b7dd5cd0-83b8-499c-b15f-3da31ec479f0
-# ╠═b7dfed28-086a-48ba-99f5-53c74119d544
+# ╠═911a43cb-3acc-4fb3-8130-109a096461ef
+# ╟─7b61e0ec-99ab-4c8d-8d1a-90b3a9026ce9
 # ╠═7722de54-4903-4fcc-9a7b-d3f6dcf47513
 # ╟─9e2ef2ba-3414-4a42-b340-83462378f19c
-# ╟─e1bb0a80-690a-4f8b-8aab-c19fc2eb74ee
+# ╟─cf96edec-64da-44dc-989e-c76f13f31fe2
 # ╠═5889a13c-0b08-4542-ac79-e684575ad606
-# ╠═ea43429a-6f80-4398-a3fb-7db3ee2a33b6
-# ╠═1c4315c4-aa9f-4fc7-a748-3b0e1ad82a8f
 # ╟─889aa225-8bd9-4706-9c49-6418f4bc4ef1
 # ╠═62bffca2-f49a-4bce-aecf-069d9a837a6d
-# ╠═1a6e2bd3-8384-416d-8d12-b6ef44e6ecc9
-# ╠═c8d0d3fc-42f0-4e82-9cca-9429a6b30166
-# ╟─8d08439d-9870-41e0-ae17-d0654b158cf4
+# ╠═82eadcaa-7e48-4ff7-9232-b6e3dc88e680
+# ╠═897ee182-6b54-4a11-a906-f99aa231c3e8
+# ╠═f4799591-4c76-403b-b528-a15cf07d13fa
 # ╟─9bd5c0e1-9a3a-461d-ad77-fd633ce728eb
 # ╟─0f28b4da-a147-4e1d-91e7-18c425ceedec
 # ╟─90d3d702-84c2-45df-ae21-b04cad4c433c
