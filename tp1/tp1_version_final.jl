@@ -87,7 +87,8 @@ end
 # ╔═╡ ab66ff6b-4882-4ac0-b0ad-a9a18863c4df
 begin
 #path = "C:\\Users\\ezequ\\OneDrive\\Documentos\\Facultad\\Optimizacion\\tp1\\datos"
-path = "/home/Estudiante/Documentos"
+#path = "/home/Estudiante/Documentos"
+path = "C:/Users/lucaz/OneDrive/Documents/Exactas/Optimización/datos"
 datos = procesarDatos(path)
 end;
 
@@ -311,8 +312,8 @@ begin
 function Σ⁺(Σ)
     return diagm([1 / σ for σ in Σ])
 end
-function A⁺(A)
 	
+function A⁺(A)
  u,s,v = svd(A)
  Σ⁺_ =  Σ⁺(s)
  return v * Σ⁺_ * u' , s[1]/s[length(s)] # condicion
@@ -434,9 +435,8 @@ function ajuste_geom(θ₀,datos,factorizacion,max_iters = 10_000,error = 1e-9)
 	θₖ = θₖ₊₁
 
 	
-		
 	if condicion > 100
-		println("WARNING condicion de la matriz en la itereacion ",k," es ",condicion)
+		println("WARNING condicion de la matriz en la iteración ",k," es ",condicion)
 	end
 		
 	if ((condicion > 1e15) && (factorizacion == false))
@@ -462,6 +462,42 @@ function metodo_geometrico(datos)
 	r = sqrt(c + a^2 + b^2)
 	return ajuste_geom([a,b,r],datos,false)
 end
+
+# ╔═╡ e35b64a5-2b6e-41be-bee4-e7743a9c156d
+function plot_alg_geom(datos)
+
+	# Algebraico
+	a, b, c = ajuste_alg(datos) 
+    radio = sqrt(c + a^2 + b^2)
+
+	# Geométrico
+	aux = metodo_geometrico(datos)
+    a_g, b_g, radio_g = aux[1]
+	k = aux[2]
+	if k != 10_000
+		println("El metodo geometrico convergio en ",k," pasos" )
+	else
+		println(k,", el número máximo de iteraciones fue alcanzado")
+	end
+	
+    # Crear una figura
+    scatter(datos[:, 1], datos[:, 2],
+		label="Datos", xlabel="X", ylabel="Y", size=(550, 450) ,legend=:best)
+    
+    # Dibujar el círculo algebraico ajustado
+    θ = LinRange(0, 2π, 100)
+    x_circ_alg = a .+ radio * cos.(θ)
+    y_circ_alg = b .+ radio * sin.(θ)
+    plot!(x_circ_alg, y_circ_alg, label="Ajuste algebraico")
+
+	# Dibujar el círculo geométrico ajustado
+    x_circ_geom = a_g .+ radio_g * cos.(θ)
+    y_circ_geom = b_g .+ radio_g * sin.(θ)
+    plot!(x_circ_geom, y_circ_geom, label="Ajuste geométrico")	
+end
+
+# ╔═╡ 897ee182-6b54-4a11-a906-f99aa231c3e8
+plot_alg_geom(datos[j])
 
 # ╔═╡ 4fb94740-0ca9-4735-ae11-b2114994be63
 function ajuste_mejorado(datos)
@@ -511,13 +547,6 @@ end
 plot_algebraico(datos[i], "algebraico")
 
 
-# ╔═╡ 897ee182-6b54-4a11-a906-f99aa231c3e8
-plot_algebraico(datos[j], "geometrico")
-
-
-# ╔═╡ b75e06fd-4438-4be0-ae05-9ddb527bf07b
-ajuste_mejorado(datos[9])
-
 # ╔═╡ 9e09614b-56db-4a69-8198-565eeeeb89dc
 md"""
 ### Ejercicio 10
@@ -525,11 +554,53 @@ md"""
 Comparar gráficamente los resultados obtenidos entre alguno de los últimos métodos descriptos y el metodo de Gauss-Newton puro para los casos donde la matriz $J$ resultante está mal condicionada.
 """
 
+# ╔═╡ 30668d6c-98d4-475f-95df-03994497cfa3
+function plot_geom_fact(datos)
+
+	# Geométrico
+	aux = metodo_geometrico(datos)
+    a_g, b_g, radio_g = aux[1]
+	k = aux[2]
+	if k != 10_000
+		println("El metodo geometrico convergio en ",k," pasos" )
+	else
+		println(k,", el número máximo de iteraciones fue alcanzado")
+	end
+
+	# Ajuste mejorado con factorización positiva
+	mej = ajuste_mejorado(datos)
+	a_m, b_m, radio_m = mej[1]
+	k_m = mej[2]
+	if k_m != 10_000
+		println("El metodo mejorado convergio en ",k_m," pasos" )
+	else
+		println(k_m,", el número máximo de iteraciones fue alcanzado")
+	end
+	
+    # Crear una figura
+    scatter(datos[:, 1], datos[:, 2],
+		label="Datos", xlabel="X", ylabel="Y", size=(550, 450) ,legend=:best)
+    
+    # Dibujar el círculo mejorado ajustado
+    θ = LinRange(0, 2π, 100)
+    x_circ_m = a_m .+ radio_m * cos.(θ)
+    y_circ_m = b_m .+ radio_m * sin.(θ)
+    plot!(x_circ_m, y_circ_m, label="Ajuste mejorado")
+
+	# Dibujar el círculo geométrico ajustado
+    x_circ_geom = a_g .+ radio_g * cos.(θ)
+    y_circ_geom = b_g .+ radio_g * sin.(θ)
+    plot!(x_circ_geom, y_circ_geom, label="Ajuste geométrico")	
+end
+
 # ╔═╡ 93695381-806d-4ca8-a41a-78b88bd55598
-@bind k Slider(1:1:10)
+@bind k Slider(4:1:10)
 
 # ╔═╡ b3db92e9-f455-4e18-ade6-f6559dfc2529
-plot_algebraico(datos[k], "Factorizacion Positiva")
+plot_geom_fact(datos[k])
+
+# ╔═╡ 2e0e689b-ac06-40fa-be17-1ccf11ffef00
+print("Dataset numero: ",k)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -726,9 +797,9 @@ uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
 version = "2.13.93+0"
 
 [[deps.Format]]
-git-tree-sha1 = "f3cf88025f6d03c194d73f5d13fee9004a108329"
+git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
 uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
-version = "1.3.6"
+version = "1.3.7"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -785,9 +856,9 @@ version = "1.0.2"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "995f762e0182ebc50548c434c171a5bb6635f8e4"
+git-tree-sha1 = "8e59b47b9dc525b70550ca082ce85bcd7f5477cd"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.4"
+version = "1.10.5"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -1127,9 +1198,9 @@ version = "1.4.1"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "3c403c6590dd93b36752634115e20137e79ab4df"
+git-tree-sha1 = "3bdfa4fa528ef21287ef659a89d686e8a1bcb1a9"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.40.2"
+version = "1.40.3"
 
     [deps.Plots.extensions]
     FileIOExt = "FileIO"
@@ -1291,9 +1362,9 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "3caa21522e7efac1ba21834a03734c57b4611c7e"
+git-tree-sha1 = "71509f04d045ec714c4748c785a59045c3736349"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.10.4"
+version = "0.10.7"
 weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
@@ -1367,9 +1438,9 @@ version = "1.31.0+0"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "07e470dabc5a6a4254ffebc29a1b3fc01464e105"
+git-tree-sha1 = "532e22cf7be8462035d092ff21fada7527e2c488"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.12.5+0"
+version = "2.12.6+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
@@ -1379,9 +1450,9 @@ version = "1.1.34+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "31c421e5516a6248dfb22c194519e37effbf1f30"
+git-tree-sha1 = "ac88fb95ae6447c8dda6a5503f3bafd496ae8632"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.6.1+0"
+version = "5.4.6+0"
 
 [[deps.Xorg_libICE_jll]]
 deps = ["Libdl", "Pkg"]
@@ -1534,9 +1605,9 @@ version = "1.2.13+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "49ce682769cd5de6c72dcf1b94ed7790cd08974c"
+git-tree-sha1 = "e678132f07ddb5bfa46857f0d7620fb9be675d3b"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
-version = "1.5.5+0"
+version = "1.5.6+0"
 
 [[deps.eudev_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "gperf_jll"]
@@ -1675,6 +1746,7 @@ version = "1.4.1+1"
 # ╠═5889a13c-0b08-4542-ac79-e684575ad606
 # ╟─889aa225-8bd9-4706-9c49-6418f4bc4ef1
 # ╠═62bffca2-f49a-4bce-aecf-069d9a837a6d
+# ╠═e35b64a5-2b6e-41be-bee4-e7743a9c156d
 # ╠═82eadcaa-7e48-4ff7-9232-b6e3dc88e680
 # ╠═897ee182-6b54-4a11-a906-f99aa231c3e8
 # ╠═f4799591-4c76-403b-b528-a15cf07d13fa
@@ -1684,9 +1756,10 @@ version = "1.4.1+1"
 # ╟─a3453611-9ced-47a1-b2c5-5163f558405a
 # ╠═69fd057a-6e18-4352-a3cd-b0885b09cb79
 # ╠═4fb94740-0ca9-4735-ae11-b2114994be63
-# ╠═b75e06fd-4438-4be0-ae05-9ddb527bf07b
 # ╟─9e09614b-56db-4a69-8198-565eeeeb89dc
+# ╟─30668d6c-98d4-475f-95df-03994497cfa3
 # ╠═93695381-806d-4ca8-a41a-78b88bd55598
 # ╠═b3db92e9-f455-4e18-ade6-f6559dfc2529
+# ╠═2e0e689b-ac06-40fa-be17-1ccf11ffef00
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
