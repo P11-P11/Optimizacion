@@ -78,7 +78,7 @@ md"""
 
 # ╔═╡ 47187293-d192-4b1a-88e8-5447b52337f0
 md""" 
-!!! note "Màs visualizaciones"
+!!! note "Agregamos visualizaciones de los primeros 10 dígitos"
 """
 
 # ╔═╡ f7206845-8fd3-439e-b7ee-20d22fc6abad
@@ -93,7 +93,6 @@ md"""
 """
 
 # ╔═╡ 1aa88a80-92eb-4a5c-88d0-88f4207cd0d0
-
 function load_data(dataset, oneHot = false)
 	
 	Xₜᵣₐᵢₙ, yₜᵣₐᵢₙ = dataset(Float32, :train)[:]
@@ -144,7 +143,7 @@ md"""
 # ╔═╡ 3545dc45-9902-4e51-9b4a-772c7f667e0e
 model_prueba = Chain(
 	Flux.flatten,
- 	#     28*28=784
+ 	# 28*28 = 784
     Dense(784=>256,relu),
     Dense(256=>10,sigmoid),
     softmax
@@ -197,7 +196,7 @@ md"""
 """
 
 # ╔═╡ 7853b8f8-5302-4914-a7c8-ef160669a6fe
-data1 = DataLoader(X_train, batchsize=100)
+data1 = DataLoader((data=X_train, label=y_train), batchsize=100)
 
 # ╔═╡ 3f90f311-2892-4a51-a47c-e9b3bc02573d
 md"""
@@ -206,33 +205,38 @@ md"""
 """
 
 # ╔═╡ 266a746d-0ec4-458c-ae3b-a861169e5200
-function accuracy(x, y)
-	return sum(x -> x==0, x - y)/length(x)
-end
+accuracy(x, y) = sum(x -> x==0, x - y)/length(x)
 
 # ╔═╡ a8f7204f-eb72-4dba-8e99-783ec67bd30f
 md"""
 !!! note "Ejercicio 7"
 	Implementar una función `train_model!` que realice el entrenamiento. Esta función debe tomar como argumentos el modelo, la función de pérdida, el conjunto de datos particionado, el tipo de optimizador y la cantidad de "epochs" para realizar dicho entrenamiento. A su vez en cada iteración se debe imprimir y guardar:
 	
-	1. La precisión del modelo usando el conjunto de testeo en cada *epoch*.
+	1. La accuracy del modelo usando el conjunto de testeo en cada *epoch*.
 	2. El resultado de la función de pérdida en cada *epoch*.
 """
 
 # ╔═╡ 35150b4a-3f1e-4af2-bdd9-2640894a419c
-function train_model!(model, loss, data_batches, optimizador, epochs)
+function train_model!(model, loss, data, optimizador, epochs)
 	parametros = Flux.params(model)
 	accuracys = zeros(epochs)
-	losses = zeros(epochs)
+	losses_train = zeros(epochs)
+	losses_test = zeros(epochs)
+	opt_state = Flux.setup(optimizador, model)
 	
 	for epoch in 1:epochs
-		Flux.train!(loss, parametros, data_batches, optimizador);
-		@info "Epoch $epoch and loss $(loss(X_train,y_train))"
-		@info "Epoch $epoch and accuracy $(accuracy(X_test,y_test))"
-		
+		Flux.train!(loss, parametros, data, optimizador);
+		epoch_accuracy = accuracy(onecold(model(X_test)), onecold(y_test))
+		epoch_loss_train = loss((X_train, y_train))
+		epoch_loss_test = loss((X_test, y_test))
+		@info "Epoch $epoch and loss $(epoch_loss_train)"
+		@info "Epoch $epoch and accuracy $(epoch_accuracy)"
+		accuracys[epoch] = epoch_accuracy
+		losses_train[epoch] = epoch_loss_train
+		losses_test[epoch] = epoch_loss_test
 	end
-	@show mean(m(real)),mean(m(fake))
-	return 
+	
+	return accuracys, losses_train, losses_test
 end
 
 # ╔═╡ 2fff20de-4831-4d34-95de-27f3b4d8ae51
@@ -246,17 +250,84 @@ md"""
 	Tener en cuenta que será necesario implementar una función de pérdida adecuada para el problema e inicializar el optimizador correspondiente con Flux.
 """
 
-# ╔═╡ 9098ed3e-62bb-4fee-923c-a4969d489be3
-#completar
+# ╔═╡ 854be540-016e-457f-84f5-1c7ac9d857f0
+begin
+	# Inicializamos los tres modelos, para entrenar cada uno con un optimizador distinto
+	
+	model1 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+	
+	model2 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+	
+	model3 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+end
+
+# ╔═╡ 7a89596a-ebfc-4137-a3c3-f48790692f54
+# Definimos las losses (una para cada modelo) y los optimizadores
+
+begin
+
+loss1((x, y)) = mean(Flux.Losses.crossentropy(model1(x), y))
+loss2((x, y)) = mean(Flux.Losses.crossentropy(model2(x), y))
+loss3((x, y)) = mean(Flux.Losses.crossentropy(model3(x), y))
+
+descent = Flux.Optimise.Descent(0.1)
+adam = Flux.Optimise.Adam(0.001, (0.9, 0.999), 1.0e-8)
+momentum = Flux.Optimise.Momentum(0.001, 0.9)
+	
+end
+
+# ╔═╡ 00079e70-e330-4af1-8a35-04699c5da482
+# Primer entrenamiento
+
+accuracys1, losses_train1, losses_test1 = train_model!(model1, loss1, data1, descent, 100)
+
+# ╔═╡ 636e341a-aa96-4075-9105-c2129f2e8215
+# Segundo entrenamiento
+
+accuracys2, losses_train2, losses_test2 = train_model!(model2, loss2, data1, adam, 100)
+
+# ╔═╡ 6fb881d3-ec98-4329-8249-55cc35b17cdc
+# Tercer entrenamiento
+
+accuracys3, losses_train3, losses_test3 = train_model!(model3, loss3, data1, momentum, 100)
 
 # ╔═╡ ba9a94e8-40ef-42ad-a941-dce9ad1d2435
 md"""
 !!! note "Ejercicio 9"
-	Relizar un grafico que muestre el avance de la precisión del modelo y uno que muestre el resultado de la función de pérdida comparando los distintos optimizadores.
+	Realizar un grafico que muestre el avance de la precisión del modelo y uno que muestre el resultado de la función de pérdida comparando los distintos optimizadores.
 """
 
 # ╔═╡ 8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
-#completar
+begin
+	scatter([1:100],accuracys1,label="Descent", title="Accuracy", xlabel="epoch", ylabel="accuracy")
+	scatter!([1:100],accuracys2,label="Adam")
+	scatter!([1:100],accuracys3,label="Momentum")
+end
+
+# ╔═╡ 4e6ee526-3fb5-466e-9cae-5b29d506be16
+begin
+	scatter([1:100],losses_train1,label="Descent", title="Loss en train set", xlabel="epoch", ylabel="loss")
+	scatter!([1:100],losses_train2,label="Adam")
+	scatter!([1:100],losses_train3,label="Momentum")
+end
 
 # ╔═╡ badeffab-386a-4a3b-8c5d-8588ec26df80
 md"""
@@ -265,7 +336,16 @@ md"""
 """
 
 # ╔═╡ 8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
-#completar
+begin
+	scatter([1:100],losses_train1,label="Descent train", mc=:blue, title="Loss en train vs test", xlabel="epoch", ylabel="loss", ma=0.75, ms=2)
+	scatter!([1:100],losses_test1,label="Descent test", mc=:blue, shape=:hline)
+	
+	scatter!([1:100],losses_train2,label="Adam train", mc=:green, ma=0.75, ms=2)
+	scatter!([1:100],losses_test2,label="Adam test", mc=:green, shape=:hline)
+	
+	scatter!([1:100],losses_train3,label="Momentum train", mc=:pink, ma=0.75, ms=2)
+	scatter!([1:100],losses_test3,label="Momentum test", mc=:pink, shape=:hline)
+end
 
 # ╔═╡ 4a3dc8cd-9d21-4a8a-8777-cb043e3ce22f
 md"""
@@ -274,7 +354,10 @@ md"""
 """
 
 # ╔═╡ 2c284bb5-57be-48f4-a970-3f0600332836
-#responder
+md"""
+!!! note "Respuesta"
+	Se observa una victoria aplastante y rotunda por parte del optimizador ```Adam```. Tanto en *accuracy* como en los valores de la *loss* tiene mejor performance que los otros optimizadores. La principal observación que vale la pena remarcar es que el valor de la *loss* de ```Adam``` en test no pareciera mejorar con el aumento de iteraciones, pero aún así termina con un resultado superior al de los otros optimizadores.
+"""
 
 # ╔═╡ 6f1727bb-9e06-44a3-aa81-9b31864baf3b
 md"""
@@ -364,7 +447,7 @@ PlutoUI = "~0.7.59"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.3"
+julia_version = "1.10.2"
 manifest_format = "2.0"
 project_hash = "5e32ee333a644145d73ed88e53cd6e4c8a597eee"
 
@@ -639,7 +722,7 @@ weakdeps = ["Dates", "LinearAlgebra"]
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.1.1+0"
+version = "1.1.0+0"
 
 [[deps.CompositionsBase]]
 git-tree-sha1 = "802bb88cd69dfd1509f6670416bd4434015693ad"
@@ -926,9 +1009,9 @@ weakdeps = ["StaticArrays"]
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "d8db6a5a2fe1381c1ea4ef2cab7c69c2de7f9ea0"
+git-tree-sha1 = "5c1d8ae0efc6c2e7b1fc502cbe25def8f661b7bc"
 uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
-version = "2.13.1+0"
+version = "2.13.2+0"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -2519,9 +2602,9 @@ version = "1.6.1"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "532e22cf7be8462035d092ff21fada7527e2c488"
+git-tree-sha1 = "52ff2af32e591541550bd753c0da8b9bc92bb9d9"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.12.6+0"
+version = "2.12.7+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
@@ -2886,13 +2969,18 @@ version = "1.4.1+1"
 # ╟─a8f7204f-eb72-4dba-8e99-783ec67bd30f
 # ╠═35150b4a-3f1e-4af2-bdd9-2640894a419c
 # ╟─2fff20de-4831-4d34-95de-27f3b4d8ae51
-# ╠═9098ed3e-62bb-4fee-923c-a4969d489be3
+# ╠═7a89596a-ebfc-4137-a3c3-f48790692f54
+# ╠═854be540-016e-457f-84f5-1c7ac9d857f0
+# ╠═00079e70-e330-4af1-8a35-04699c5da482
+# ╠═636e341a-aa96-4075-9105-c2129f2e8215
+# ╠═6fb881d3-ec98-4329-8249-55cc35b17cdc
 # ╟─ba9a94e8-40ef-42ad-a941-dce9ad1d2435
 # ╠═8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
+# ╠═4e6ee526-3fb5-466e-9cae-5b29d506be16
 # ╟─badeffab-386a-4a3b-8c5d-8588ec26df80
 # ╠═8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
 # ╟─4a3dc8cd-9d21-4a8a-8777-cb043e3ce22f
-# ╠═2c284bb5-57be-48f4-a970-3f0600332836
+# ╟─2c284bb5-57be-48f4-a970-3f0600332836
 # ╟─6f1727bb-9e06-44a3-aa81-9b31864baf3b
 # ╟─dcf7d941-18ff-4c37-bb65-4c73a9a47df6
 # ╟─6b083ebb-f9f3-490b-9bf3-3f11318c54aa
