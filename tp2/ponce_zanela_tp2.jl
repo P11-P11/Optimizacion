@@ -250,58 +250,72 @@ md"""
 	Tener en cuenta que será necesario implementar una función de pérdida adecuada para el problema e inicializar el optimizador correspondiente con Flux.
 """
 
-# ╔═╡ 2f70508e-1b52-4065-b27a-c7886c0fc370
-md"""
-!!! note "Pasando un poco en limpio"
-
-"""
+# ╔═╡ 5f7a9cb3-a1bb-418f-b0b8-97d30cac45d7
+begin
+	Random.seed!(1234)
+	
+	# Inicializamos los tres modelos, para entrenar cada uno con un optimizador distinto
+	
+	model1 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+	
+	model2 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+	
+	model3 = Chain(
+		Flux.flatten,
+	 	# 28*28 = 784
+	    Dense(784=>256,relu),
+	    Dense(256=>10,sigmoid),
+	    softmax
+	)
+end
 
 # ╔═╡ f932296f-e1c1-40fd-a749-9acd207d5cde
+# Definimos las losses (una para cada modelo) y los optimizadores
+
 begin
-Random.seed!(1234)
 
-model = Chain(
-	Flux.flatten,
- 	# 28*28 = 784
-    Dense(784=>256,relu),
-    Dense(256=>10,sigmoid),
-    softmax
-)
-loss((x, y)) = mean(Flux.Losses.crossentropy(model(x), y))
-
-epochs = 10
+loss1((x, y)) = mean(Flux.Losses.crossentropy(model1(x), y))
+loss2((x, y)) = mean(Flux.Losses.crossentropy(model2(x), y))
+loss3((x, y)) = mean(Flux.Losses.crossentropy(model3(x), y))
 
 descent = Flux.Optimise.Descent(0.1)
-
 adam = Flux.Optimise.Adam(0.001, (0.9, 0.999), 1.0e-8)
+momentum = Flux.Optimise.Momentum(0.001, 0.9)
 
-momentum = Flux.Optimise.Momentum(0.001, 0.9)	
+epochs = 10
+	
+end
+
+# ╔═╡ 8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
+begin
+	
+println("Training con Descent base")
+accuracys_descent, losses_train_descent, losses_test_descent = train_model!(model1, loss1, data1, descent, epochs)
+
+println("Training con Adam")
+accuracys_adam, losses_train_adam, losses_test_adam = train_model!(model2, loss2, data1, adam, epochs)
+	
+println("Training con Momentum")
+accuracys_momentum, losses_train_momentum, losses_test_momentum = train_model!(model3, loss3, data1, momentum, epochs)
+
 end
 
 # ╔═╡ ba9a94e8-40ef-42ad-a941-dce9ad1d2435
 md"""
 !!! note "Ejercicio 9"
 	Relizar un grafico que muestre el avance de la precisión del modelo y uno que muestre el resultado de la función de pérdida comparando los distintos optimizadores.
-"""
-
-# ╔═╡ 8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
-begin
-prinln("Training con Descent base")
-accuracys_descent, losses_train_descent, losses_test_descent = train_model!(model, loss, data1, descent, epochs)
-
-prinln("Training con adam")
-
-accuracys_adam, losses_train_adam, losses_test_adam = train_model!(model, loss, data1, adam, epochs)
-prinln("Training con momentum")
-
-accuracys_momentum, losses_train_momentum, losses_test_momentum = train_model!(model, loss, data1, momentum, epochs)
-
-end
-
-# ╔═╡ badeffab-386a-4a3b-8c5d-8588ec26df80
-md"""
-!!! note "Ejercicio 10"
-	Realizar un único grafico donde se vea la ```loss_{train}``` y ```loss_{test}``` en función de la cantidad de iteraciones para cada uno de los métodos de descenso.
 """
 
 # ╔═╡ 8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
@@ -317,6 +331,12 @@ begin
 	plot!([1:epochs],losses_train_adam,label="Adam")
 	plot!([1:epochs],losses_train_momentum,label="Momentum")
 end
+
+# ╔═╡ badeffab-386a-4a3b-8c5d-8588ec26df80
+md"""
+!!! note "Ejercicio 10"
+	Realizar un único grafico donde se vea la ```loss_{train}``` y ```loss_{test}``` en función de la cantidad de iteraciones para cada uno de los métodos de descenso.
+"""
 
 # ╔═╡ 52ac57e7-ff6c-427e-9a6b-b4664c77afa4
 begin
@@ -354,6 +374,12 @@ end
 md"""
 !!! terminology "" 
 	¿Qué conclusiones del analisis previo puede sacar?¿Que optimizador fue mejor?
+"""
+
+# ╔═╡ 9e319e39-0fbc-4c0a-95ff-df3baee74e9f
+md"""
+!!! note "Respuesta"
+	Se observa una victoria aplastante y rotunda por parte del optimizador ```Adam```. Tanto en *accuracy* como en los valores de la *loss* tiene mejor performance que los otros optimizadores. La principal observación que vale la pena remarcar es que el valor de la *loss* de ```Adam``` en test no pareciera mejorar con el aumento de iteraciones, pero aún así termina con un resultado superior al de los otros optimizadores.
 """
 
 # ╔═╡ 6f1727bb-9e06-44a3-aa81-9b31864baf3b
@@ -3053,18 +3079,19 @@ version = "1.4.1+1"
 # ╟─a8f7204f-eb72-4dba-8e99-783ec67bd30f
 # ╠═35150b4a-3f1e-4af2-bdd9-2640894a419c
 # ╟─2fff20de-4831-4d34-95de-27f3b4d8ae51
-# ╟─2f70508e-1b52-4065-b27a-c7886c0fc370
 # ╠═f932296f-e1c1-40fd-a749-9acd207d5cde
-# ╟─ba9a94e8-40ef-42ad-a941-dce9ad1d2435
+# ╠═5f7a9cb3-a1bb-418f-b0b8-97d30cac45d7
 # ╠═8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
-# ╟─badeffab-386a-4a3b-8c5d-8588ec26df80
+# ╟─ba9a94e8-40ef-42ad-a941-dce9ad1d2435
 # ╠═8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
 # ╠═2c284bb5-57be-48f4-a970-3f0600332836
+# ╟─badeffab-386a-4a3b-8c5d-8588ec26df80
 # ╠═52ac57e7-ff6c-427e-9a6b-b4664c77afa4
 # ╟─92b2e1cd-8282-4309-aeb2-8bc74a5795fc
-# ╠═615e306b-bfc5-4943-9275-6e27d137daef
-# ╟─ff0c02a1-c86a-4a2c-b8e9-b82ba8a50c37
+# ╠═ff0c02a1-c86a-4a2c-b8e9-b82ba8a50c37
+# ╟─615e306b-bfc5-4943-9275-6e27d137daef
 # ╟─4a3dc8cd-9d21-4a8a-8777-cb043e3ce22f
+# ╟─9e319e39-0fbc-4c0a-95ff-df3baee74e9f
 # ╟─6f1727bb-9e06-44a3-aa81-9b31864baf3b
 # ╟─dcf7d941-18ff-4c37-bb65-4c73a9a47df6
 # ╟─6b083ebb-f9f3-490b-9bf3-3f11318c54aa
