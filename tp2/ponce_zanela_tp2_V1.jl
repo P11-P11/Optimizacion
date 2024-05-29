@@ -23,9 +23,6 @@ using Flux: onehotbatch, onecold
 # ╔═╡ 08c426d4-59b6-452c-913e-a0c0f53f9d35
 using Flux: DataLoader, params
 
-# ╔═╡ 02e859c7-dfcd-4816-b0aa-d9a1bfecc4b9
-using FileIO
-
 # ╔═╡ 15d48a70-0647-11ef-1a68-fb486549b55d
 md"""
 # Trabajo Práctico N°2: Reconocimiento de dígitos escritos a mano
@@ -208,7 +205,7 @@ md"""
 """
 
 # ╔═╡ 266a746d-0ec4-458c-ae3b-a861169e5200
-accuracy(x, y) = sum(x -> x==0, x - y)/length(x);
+accuracy(x, y) = sum(x -> x==0, x - y)/length(x)
 
 # ╔═╡ a8f7204f-eb72-4dba-8e99-783ec67bd30f
 md"""
@@ -284,11 +281,6 @@ begin
 	)
 end
 
-# ╔═╡ ab25c8bd-782a-40d1-a2e2-b824f713ee60
-md"""
-!!! note "Definición de la cantidad de epochs"
-"""
-
 # ╔═╡ f932296f-e1c1-40fd-a749-9acd207d5cde
 # Definimos las losses (una para cada modelo) y los optimizadores
 
@@ -300,25 +292,22 @@ loss3((x, y)) = mean(Flux.Losses.crossentropy(model3(x), y))
 
 descent = Flux.Optimise.Descent(0.1)
 adam = Flux.Optimise.Adam(0.001, (0.9, 0.999), 1.0e-8)
-momentum = Flux.Optimise.Momentum(0.01, 0.9)
+momentum = Flux.Optimise.Momentum(0.001, 0.9)
+
+epochs = 10
 	
 end
-
-# ╔═╡ 7ee02333-ed8b-4c4c-9d27-d8883f55aed3
-md"""
-	Definición de cantidad de epochs
-"""
-
-# ╔═╡ 25efce21-5dd9-47b8-8901-fd1257464847
-epochs = 10
 
 # ╔═╡ 8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
 begin
 	
+println("Training con Descent base")
 accuracys_descent, losses_train_descent, losses_test_descent = train_model!(model1, loss1, data1, descent, epochs)
 
+println("Training con Adam")
 accuracys_adam, losses_train_adam, losses_test_adam = train_model!(model2, loss2, data1, adam, epochs)
 	
+println("Training con Momentum")
 accuracys_momentum, losses_train_momentum, losses_test_momentum = train_model!(model3, loss3, data1, momentum, epochs)
 
 end
@@ -331,9 +320,9 @@ md"""
 
 # ╔═╡ 8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
 begin
-	plot([1:epochs],accuracys_descent,label="Descent", title="Accuracy", xlabel="epoch", ylabel="accuracy")
-	plot!([1:epochs],accuracys_adam,label="Adam")
-	plot!([1:epochs],accuracys_momentum,label="Momentum")
+	plot([1:10],accuracys_descent,label="Descent", title="Accuracy", xlabel="epoch", ylabel="accuracy")
+	plot!([1:10],accuracys_adam,label="Adam")
+	plot!([1:10],accuracys_momentum,label="Momentum")
 end
 
 # ╔═╡ 2c284bb5-57be-48f4-a970-3f0600332836
@@ -352,13 +341,13 @@ md"""
 # ╔═╡ 52ac57e7-ff6c-427e-9a6b-b4664c77afa4
 begin
 	plot([1:epochs],losses_train_descent,label="Descent train", mc=:blue, title="Loss en train vs test", xlabel="epoch", ylabel="loss", ma=0.75, ms=2)
-	plot!([1:epochs],losses_test_descent, label="Descent test", lc=:blue, shape=:rtriangle, ml=:black)
+	plot!([1:epochs],losses_test_descent,label="Descent test", mc=:blue, shape=:hline)
 	
 	plot!([1:epochs],losses_train_adam,label="Adam train", mc=:green, ma=0.75, ms=2)
-	plot!([1:epochs],losses_test_adam,label="Adam test", lc=:green, shape=:rtriangle)
+	plot!([1:epochs],losses_test_adam,label="Adam test", mc=:green, shape=:hline)
 	
 	plot!([1:epochs],losses_train_momentum,label="Momentum train", mc=:pink, ma=0.75, ms=2)
-	plot!([1:epochs],losses_test_momentum,label="Momentum test", lc=:pink, shape=:rtriangle)
+	plot!([1:epochs],losses_test_momentum,label="Momentum test", mc=:pink, shape=:hline)
 end
 
 # ╔═╡ 92b2e1cd-8282-4309-aeb2-8bc74a5795fc
@@ -372,9 +361,9 @@ md"""
 
 # ╔═╡ ff0c02a1-c86a-4a2c-b8e9-b82ba8a50c37
 begin
-Metodos = ["Descent ","Momentum ","Adam "]
-losses_train = [losses_train_descent,losses_train_momentum,losses_train_adam]
-losses_test = [losses_test_descent,losses_test_momentum,losses_test_adam]
+Metodos = ["Descent ","Adam ","Momentum "]
+losses_train = [losses_train_descent,losses_train_adam,losses_train_momentum]
+losses_test = [losses_test_descent,losses_test_adam,losses_test_momentum]
 
 	
 plot([1:epochs],losses_train[metodo],label= Metodos[metodo] * "train", mc=:blue, title="Loss en train vs test para " * Metodos[metodo], xlabel="epoch", ylabel="loss", ma=0.75, ms=2)
@@ -389,7 +378,7 @@ md"""
 
 # ╔═╡ 9e319e39-0fbc-4c0a-95ff-df3baee74e9f
 md"""
-!!! terminology "Respuesta"
+!!! note "Respuesta"
 	Se observa una victoria aplastante y rotunda por parte del optimizador ```Adam```. Tanto en *accuracy* como en los valores de la *loss* tiene mejor performance que los otros optimizadores. La principal observación que vale la pena remarcar es que el valor de la *loss* de ```Adam``` en test no pareciera mejorar con el aumento de iteraciones, pero aún así termina con un resultado superior al de los otros optimizadores.
 """
 
@@ -446,12 +435,9 @@ md"""
 	Repetir el ejercicio 8 y realizar un gráfico comparando la Loss de la red neuronal multicapa y la red neuronal convolucional para cada método de descenso.
 """
 
-# ╔═╡ 65cfe816-f0fe-4b8e-bb1f-cdc73fd10c6d
+# ╔═╡ d20c2f60-6536-4a27-a22f-844f6e9ecd46
 begin
-
-function model_conv()
-	
-	model = Chain(
+	model_conv = Chain(
     Conv((5,5), 1 =>6, relu),        # Primera capa convolucional
     MaxPool((2,2)),                   # Primera capa de MaxPool
     Conv((5,5), 6 => 16, relu),       # Segunda capa convolucional
@@ -462,30 +448,7 @@ function model_conv()
     Dense(84 => 10),                  # Capa de salida con 10 neuronas (para 10 clases)
     softmax                           # Función de activación softmax para la salida
 );
- return model	
-end
-end
-
-# ╔═╡ 970d7337-844c-451b-ab1c-61ece2b4ae04
-begin
-Random.seed!(1234)
-
-conv_descent  = model_conv()
-conv_momentum = model_conv()
-conv_adam     = model_conv()
-	
-loss_descent((x, y)) = mean(Flux.Losses.crossentropy(conv_descent(x), y))
-
-loss_momentum((x, y)) = mean(Flux.Losses.crossentropy(conv_momentum(x), y))
-
-loss_adam((x, y)) = mean(Flux.Losses.crossentropy(conv_adam(x), y))
-
-	
-end
-
-# ╔═╡ d20c2f60-6536-4a27-a22f-844f6e9ecd46
-begin
-
+loss_conv((x, y)) = mean(Flux.Losses.crossentropy(model_conv(x), y))
 function train_model_conv!(model, loss, data, optimizador, epochs)
 	parametros = Flux.params(model)
 	accuracys = zeros(epochs)
@@ -509,32 +472,30 @@ function train_model_conv!(model, loss, data, optimizador, epochs)
 end
 end
 
-# ╔═╡ 5cf4d3d5-5cbe-4b8b-8423-726f5dcc0b72
-begin
-	println("Perfomance Descent")
-	accuracys_conv_descent, losses_train_conv_descent, losses_test_conv_descent = 
-	train_model_conv!(conv_descent ,loss_descent,data2, descent, epochs)
-end
+# ╔═╡ e04b70d3-1f3f-484c-a906-6ef27644b849
+md"""
+!!! terminology "" 
+	¿Qué conclusiones puede sacar?¿El entrenamiento 2 arrojo mejores resultados que el entrenamiento 1?
+"""
 
 # ╔═╡ 0a8d1d0e-f6b3-4ba6-8f0c-9aa98f88a43a
 begin
-	println("Performance Momentum")
-	accuracys_conv_momentum, losses_train_conv_momentum, losses_test_conv_momentum = 
-	train_model_conv!(conv_momentum ,loss_momentum,data2, momentum, epochs)
-end
-
-# ╔═╡ c0311266-654e-4a0e-88ef-b57ba599f49e
-begin
+	println("Perfomance Descent")
+	accuracys_conv_descent, losses_train_conv_descent, losses_test_conv_descent = 
+	train_model_conv!(model_conv ,loss_conv,data2, descent, 10)
 	println("Perfomance Adam")
 	accuracys_conv_adam, losses_train_conv_adam, losses_test_conv_adam = 
-	train_model_conv!(conv_adam ,loss_adam,data2, adam, epochs)
+	train_model_conv!(model_conv ,loss_conv,data2, adam, 10)
+	println("Performance Momentum")
+	accuracys_conv_momentum, losses_train_conv_momentum, losses_test_conv_momentum = 
+	train_model_conv!(model_conv ,loss_conv,data2, momentum, 10)
 end
 
 # ╔═╡ 958fa1e3-dda5-4219-a22a-305bb7f15998
 begin
-	plot([1:epochs],accuracys_conv_descent,label="Descent", title="Accuracy", xlabel="epoch", ylabel="accuracy")
-	plot!([1:epochs],accuracys_conv_adam,label="Adam")
-	plot!([1:epochs],accuracys_conv_momentum,label="Momentum")
+	plot([1:10],accuracys_conv_descent,label="Descent", title="Accuracy", xlabel="epoch", ylabel="accuracy")
+	plot!([1:10],accuracys_conv_adam,label="Adam")
+	plot!([1:10],accuracys_conv_momentum,label="Momentum")
 end
 
 # ╔═╡ 6337d4d0-5582-4d4a-8178-c914516f12db
@@ -554,13 +515,12 @@ end
 
 # ╔═╡ 87b22d97-b736-4f47-9a88-aefb5c427958
 begin
-
+losses_train_conv = [losses_train_conv_descent,losses_train_conv_adam,losses_train_conv_momentum]
 losses_test_conv = [losses_test_conv_descent,losses_test_conv_adam,losses_test_conv_momentum]
-losses_test_multicapa = [losses_test_descent,losses_test_adam,losses_test_momentum]
 
 	
-plot([1:epochs],losses_test_conv[metodo_conv],label= Metodos[metodo_conv] * "convolucional", mc=:blue, title="Loss multicapa vs convolucional en test para " * Metodos[metodo_conv], xlabel="epoch", ylabel="loss", ma=0.75, ms=2)
-plot!([1:epochs],losses_test_multicapa[metodo_conv],label=Metodos[metodo_conv] * "multicapa", mc=:red)
+plot([1:epochs],losses_train_conv[metodo_conv],label= Metodos[metodo_conv] * "train", mc=:blue, title="Loss en train vs test para " * Metodos[metodo_conv], xlabel="epoch", ylabel="loss", ma=0.75, ms=2)
+plot!([1:epochs],losses_test_conv[metodo_conv],label=Metodos[metodo_conv] * "test", mc=:red)
 end
 
 # ╔═╡ 442d3c42-44e3-4525-a215-8526c61083db
@@ -568,108 +528,15 @@ md"""
 ---
 """
 
-# ╔═╡ e04b70d3-1f3f-484c-a906-6ef27644b849
-md"""
-!!! terminology "" 
-	¿Qué conclusiones puede sacar?¿El entrenamiento 2 arrojo mejores resultados que el entrenamiento 1?
-"""
-
-# ╔═╡ 7976569c-486d-4471-aa1f-255d3a982bb7
-md"""
-!!! terminology "Respuesta"
-	Para todos los optimizadores, la performance de la red convolucional es significativamente mejor que la del modelo multicapa. 
-	Al comparar los modelos convolucionales entre sí, los resultados son -por lo menos en nuestro caso, habiendo entrenado por 10 epochs a cada modelo- más parejos que comparando entre sí los modelos multicapa: en cuanto a la *accuracy*, la competencia entre modelos convolucionales resulta levemente dominada (y de forma muy pareja) por los modelos entrenados con ```Descent``` y ```Momentum```.
-"""
-
 # ╔═╡ 7bf1a8fa-7de3-4499-920d-3fbf8f7a79c4
 md"""
 !!! note "Ejercicio bonus (no obligatorio)"
-	Implementar una función que tome como argumento una imagen de las alojadas en el archivo .rar y retorne el dígito que contenga dicha imagen.
+	Implementar una función que tomé como argumento una imagen de las alojadas en el archivo .rar y retorne el dígito que contenga dicha imagen.
 """
-
-# ╔═╡ 90252542-ec8c-42a9-a15f-ddb9293cb44b
-begin
-
-# Function to check if a file ends with any of the specified suffixes
-function has_valid_extension(file::String, extensions::Vector{String})
-    for ext in extensions
-        if endswith(file, ext)
-            return true
-        end
-    end
-    return false
-end
-
-# Function to load images from a specified folder
-function load_images(folder_path::String)
-    image_files = readdir(folder_path)
-    images = []
-    valid_extensions = [".png", ".jpg", ".jpeg"]
-    for file in image_files
-        if has_valid_extension(file, valid_extensions)
-            img = load(joinpath(folder_path, file))
-            push!(images, img)
-        end
-    end
-    return images
-end
-
-# Preprocess images: resize and normalize
-function preprocess_images(images::Array{Any,1})
-    processed_images = []
-    for img in images
-        img_resized = imresize(img, (28, 28))  # Resize to 28x28
-        img_gray = Gray.(img_resized)  # Convert to grayscale
-        #img_array = Float32.(img_gray / 255.0)  # Normalize
-        push!(processed_images, img_gray)
-    end
-    return processed_images
-end
-
-# Function to predict digits
-function predict_digits(model, images::Array{Any,1})
-    predictions = []
-    for img in images
-		image = reshape(img, 28, 28, 1, 1)
-        pred = model(image)
-        push!(predictions, onecold(pred))  # Assuming digits 0-9
-    end
-    return predictions
-end
-
-end
-
-# ╔═╡ 1d02aabe-77ba-4a21-9f16-108c93b0f451
-begin
-
-# Load and preprocess images from the folder
-folder_path = "C:/Users/lucaz/OneDrive/Documents/Exactas/Optimización/Optimizacion/tp2/imagenes_tp2"
-images = load_images(folder_path)
-processed_images = preprocess_images(images)
-
-# Predict digits
-predictions = predict_digits(conv_descent, processed_images)
-
-# Display predictions
-for (i, pred) in enumerate(predictions)
-    println("Image $i: Predicted Digit = $(pred[1]-1)")
-end
-
-end
-
-# ╔═╡ 04c226fa-6d9a-42cd-aa1c-24d02f7bdccc
-@bind s Slider(1:1:10)
-
-# ╔═╡ ff595858-55a3-47f3-b0fe-aee5c6d1f433
-println("Image $(s)")
-
-# ╔═╡ af2f9a14-3d83-4998-86f9-017cd61f6518
-(ones(28,28)-images[s])
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -680,7 +547,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-FileIO = "~1.16.3"
 Flux = "~0.14.15"
 Images = "~0.26.1"
 MLDatasets = "~0.7.14"
@@ -694,7 +560,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "f7ab81fe36129fb1bdfef073194f074418c3f3e1"
+project_hash = "5e32ee333a644145d73ed88e53cd6e4c8a597eee"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -3213,20 +3079,17 @@ version = "1.4.1+1"
 # ╟─a8f7204f-eb72-4dba-8e99-783ec67bd30f
 # ╠═35150b4a-3f1e-4af2-bdd9-2640894a419c
 # ╟─2fff20de-4831-4d34-95de-27f3b4d8ae51
-# ╠═5f7a9cb3-a1bb-418f-b0b8-97d30cac45d7
-# ╟─ab25c8bd-782a-40d1-a2e2-b824f713ee60
 # ╠═f932296f-e1c1-40fd-a749-9acd207d5cde
-# ╟─7ee02333-ed8b-4c4c-9d27-d8883f55aed3
-# ╠═25efce21-5dd9-47b8-8901-fd1257464847
+# ╠═5f7a9cb3-a1bb-418f-b0b8-97d30cac45d7
 # ╠═8210e8d7-5e9e-4163-bd5a-d3bbf7f03ab0
 # ╟─ba9a94e8-40ef-42ad-a941-dce9ad1d2435
-# ╟─8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
-# ╟─2c284bb5-57be-48f4-a970-3f0600332836
+# ╠═8e1991dd-7ee8-4cf8-8370-bf4cb815a0d5
+# ╠═2c284bb5-57be-48f4-a970-3f0600332836
 # ╟─badeffab-386a-4a3b-8c5d-8588ec26df80
 # ╠═52ac57e7-ff6c-427e-9a6b-b4664c77afa4
 # ╟─92b2e1cd-8282-4309-aeb2-8bc74a5795fc
+# ╠═ff0c02a1-c86a-4a2c-b8e9-b82ba8a50c37
 # ╟─615e306b-bfc5-4943-9275-6e27d137daef
-# ╟─ff0c02a1-c86a-4a2c-b8e9-b82ba8a50c37
 # ╟─4a3dc8cd-9d21-4a8a-8777-cb043e3ce22f
 # ╟─9e319e39-0fbc-4c0a-95ff-df3baee74e9f
 # ╟─6f1727bb-9e06-44a3-aa81-9b31864baf3b
@@ -3237,25 +3100,14 @@ version = "1.4.1+1"
 # ╟─88ac49df-5c4d-4878-8b0e-559d4d48d6f8
 # ╠═c344393c-76ca-46ed-bd72-bf69719eafb0
 # ╟─2f8a416e-6692-415b-aa5c-69ccedae6244
-# ╠═65cfe816-f0fe-4b8e-bb1f-cdc73fd10c6d
-# ╠═970d7337-844c-451b-ab1c-61ece2b4ae04
 # ╠═d20c2f60-6536-4a27-a22f-844f6e9ecd46
-# ╠═5cf4d3d5-5cbe-4b8b-8423-726f5dcc0b72
-# ╠═0a8d1d0e-f6b3-4ba6-8f0c-9aa98f88a43a
-# ╠═c0311266-654e-4a0e-88ef-b57ba599f49e
-# ╟─958fa1e3-dda5-4219-a22a-305bb7f15998
-# ╟─6337d4d0-5582-4d4a-8178-c914516f12db
-# ╟─a5926f68-74f4-4fd0-9f79-4daf7480d5d5
-# ╟─87b22d97-b736-4f47-9a88-aefb5c427958
-# ╟─442d3c42-44e3-4525-a215-8526c61083db
 # ╟─e04b70d3-1f3f-484c-a906-6ef27644b849
-# ╟─7976569c-486d-4471-aa1f-255d3a982bb7
+# ╠═0a8d1d0e-f6b3-4ba6-8f0c-9aa98f88a43a
+# ╠═958fa1e3-dda5-4219-a22a-305bb7f15998
+# ╠═6337d4d0-5582-4d4a-8178-c914516f12db
+# ╠═a5926f68-74f4-4fd0-9f79-4daf7480d5d5
+# ╠═87b22d97-b736-4f47-9a88-aefb5c427958
+# ╟─442d3c42-44e3-4525-a215-8526c61083db
 # ╟─7bf1a8fa-7de3-4499-920d-3fbf8f7a79c4
-# ╠═02e859c7-dfcd-4816-b0aa-d9a1bfecc4b9
-# ╠═90252542-ec8c-42a9-a15f-ddb9293cb44b
-# ╠═1d02aabe-77ba-4a21-9f16-108c93b0f451
-# ╟─04c226fa-6d9a-42cd-aa1c-24d02f7bdccc
-# ╟─ff595858-55a3-47f3-b0fe-aee5c6d1f433
-# ╟─af2f9a14-3d83-4998-86f9-017cd61f6518
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
