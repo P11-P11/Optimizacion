@@ -85,7 +85,7 @@ begin
 	    return a, b
 	end
 	
-	function golden_section_search(ϕ, eps=1e-5, N=100)
+	function golden_section_search(ϕ, eps=1e-5, N=5000)
 	    a = 0.0
 	    b = find_b(ϕ)
 	    return gss(ϕ, a, b, eps, N)
@@ -106,7 +106,7 @@ md"""
 
 # ╔═╡ 7927a4cd-95a3-4c76-9392-2f2c7bf5a028
 begin
-function DFP(f, grad_f, x0; tol=1e-5, max_iter=100)
+function DFP(f, grad_f, x0; tol=1e-5, max_iter=5000)
     x_k = x0
     S_k = I(length(x0))
     
@@ -130,6 +130,7 @@ function DFP(f, grad_f, x0; tol=1e-5, max_iter=100)
     println("Reached maximum iterations")
     return x_k
 end
+end
 
 # ╔═╡ f04db0a1-86f5-4efb-a4bd-696e0627dab3
 md"""Nuestro primer método de resolución será el de penalidad. Dado que nuestro problema contempla sólo restricciones de desigualdad, podemos limitar el programa a ese caso. Por lo tanto: 
@@ -149,7 +150,7 @@ maxz(x) = max(x,0)
 # ╔═╡ bd026c17-69a1-4086-bbc7-b77b601f996f
 begin
 
-function penalidad(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=100, r=1.0, c=10.0)
+function penalidad(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, r=1.0, c=10.0)
     
 	function penalizar_f(x)
         return f(x) + (r / 2) * sum(maxz.(g(x)).^2)
@@ -161,7 +162,7 @@ function penalidad(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=100, r=1.0, c=10
         grad_gx = grad_g(x)
         for j in 1:length(gx)
             if gx[j] > 0
-                penalty_grad += gx[j] * grad_gx[j, :]
+                penalty_grad += gx[j]' * grad_gx[j, :]
             end
         end
         return grad_f(x) + r * penalty_grad
@@ -193,11 +194,8 @@ md"""Compararemos los resultados arrojados por el método de penalidad con el m�
 !!! note "Ejercicio 4"
 	Implementar una función similar a la anterior, que reciba parámetros `f`, `∇f`, `g`, `∇g` y un dato inicial `z` y aplique el método del Lagrangiano aumentado, asumiendo que las restricciones son sólo de desigualdad. """
 
-# ╔═╡ 78e95d63-7564-4f24-b765-ab8802e2c6f6
-\lag
-
 # ╔═╡ 74975b01-7f46-43e6-8766-53bfa7d958e9
-function L_aumentado(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=100, c=10.0)
+function L_aumentado(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=10.0)
     µ = zeros(length(g(x0)))
     
     function L(x)
@@ -252,10 +250,16 @@ $z = [x;y;r].$
 	Implementar una función *desempaquetar* que reciba como parámetro $z$ y devuelva las variables $x\in\mathbb{R}^n$, $y\in\mathbb{R}^n$ y $r\in\mathbb{R}$.
 """
 
-# ╔═╡ 5ebc67a4-4543-4823-a4f8-bcd75cbdd3e2
+# ╔═╡ 3d27cf01-72cd-409f-8716-2a1c661a5cbd
+# Función para desempaquetar el vector z en x, y, r
 function desempaquetar(z)
-	return z[1],z[2],z[3]
+    n = (length(z) - 1) ÷ 2
+    x = z[1:n]
+    y = z[n+1:2n]
+    r = z[end]
+    return x, y, r
 end
+
 
 # ╔═╡ 321ea2f9-e4b4-431d-b0e1-3659c83f652c
 md"""
@@ -301,17 +305,6 @@ md"""### El problema
 
 Necesitaremos implementar el funcional y su gradiente, pero también las restricciones con su correspondiente matriz de gradientes. """
 
-# ╔═╡ 0e443f77-d346-4414-8adf-82a18b90a2cf
-md"""
-!!! note "Ejercicio 6"
-	El funcional a optimizar será el área **no** ocupada por círculos. Implementar este funcional y gradiente, en términos de la variable $z$."""
-
-# ╔═╡ 3171d4dc-edd3-4b26-9adc-49fb896f5c3b
-#completar
-
-# ╔═╡ 068222ed-3c32-44a0-af7a-bc7caae264a9
-#completar
-
 # ╔═╡ cba62975-6abe-4f6a-b153-ec98dcaf3ae5
 md"""Las restricciones al problema pueden escribirse del siguiente modo:
 
@@ -334,7 +327,39 @@ restricciones.
 
 A continuación, damos una función que recibe como dato un vector $z$ y devuelve un vector de $M$ casilleros con la evaluación de las restricciones en $z$. Depende de la función `desempaquetar`. """
 
-# ╔═╡ 241c09ec-8910-4213-aae4-bffe5768de6e
+# ╔═╡ 0e443f77-d346-4414-8adf-82a18b90a2cf
+md"""
+!!! note "Ejercicio 6"
+	El funcional a optimizar será el área **no** ocupada por círculos. Implementar este funcional y gradiente, en términos de la variable $z$."""
+
+# ╔═╡ ef63e0ac-d76c-4f33-a3c0-ae67668690bd
+begin
+
+# Funcional: Área no ocupada por círculos
+function area_no_ocupada(z)
+    x, y, r = desempaquetar(z)
+    n = length(x)
+    return 1 - π * n * r^2
+end
+
+# Gradiente del funcional
+function grad_area_no_ocupada(z)
+    x, y, r = desempaquetar(z)
+    n = length(x)
+    grad_r = -2π * n * r
+    grad_x = zeros(n)
+    grad_y = zeros(n)
+    return [grad_x; grad_y; grad_r]
+end
+
+end
+
+# ╔═╡ ae1daad8-5e0d-4784-9e18-5e34ebab5998
+md"""
+!!! note "Ejercicio 7"
+	Dado que queremos aplicar el algoritmo DFP conociendo el gradiente de la función de penalidad o del Lagrangiano aumentado, necesitaremos también el gradiente de las restricciones. Recordar que la convención más práctica es considerar que $∇g$ es una matriz de $N\times M$ en donde la columna $i$-ésima  corresponde al gradiente de $g_i$. Sobre la base de la función $g$, implementar una función que reciba $z$ y devuelva esta matriz, evaluada en $z$."""
+
+# ╔═╡ 447448e6-6339-4c9f-9ade-4f734d4f3a5d
 function g(z)
 	x,y,r = desempaquetar(z)
 	n     = length(x)
@@ -357,13 +382,51 @@ function g(z)
 	return res
 end
 
-# ╔═╡ ae1daad8-5e0d-4784-9e18-5e34ebab5998
-md"""
-!!! note "Ejercicio 7"
-	Dado que queremos aplicar el algoritmo DFP conociendo el gradiente de la función de penalidad o del Lagrangiano aumentado, necesitaremos también el gradiente de las restricciones. Recordar que la convención más práctica es considerar que $∇g$ es una matriz de $N\times M$ en donde la columna $i$-ésima  corresponde al gradiente de $g_i$. Sobre la base de la función $g$, implementar una función que reciba $z$ y devuelva esta matriz, evaluada en $z$."""
-
 # ╔═╡ 1ac6a298-963d-41d3-91aa-1c59b0c2f2e0
-#completar
+function grad_restricciones_matrix(z)
+    x, y, r = desempaquetar(z)
+    n = length(x)
+    M = (n * (n - 1)) ÷ 2 + 4 * n + 1
+    grad_g = zeros(length(z), M)
+    idx = 1
+    
+    # Gradientes de las restricciones de no superposición de círculos
+    for i in 1:n
+        for j in i+1:n
+            grad_g[1+i-1, idx] = -2(x[i] - x[j])
+            grad_g[1+j-1, idx] = 2(x[i] - x[j])
+            grad_g[n+1+i-1, idx] = -2(y[i] - y[j])
+            grad_g[n+1+j-1, idx] = 2(y[i] - y[j])
+            grad_g[end, idx] = 8r
+            idx += 1
+        end
+    end
+    
+    # Gradientes de las restricciones de estar dentro de la región 1x1
+    for i in 1:n
+        grad_g[1+i-1, idx] = 1
+        grad_g[end, idx] = 1
+        idx += 1
+        
+        grad_g[n+1+i-1, idx] = 1
+        grad_g[end, idx] = 1
+        idx += 1
+        
+        grad_g[1+i-1, idx] = -1
+        grad_g[end, idx] = 1
+        idx += 1
+        
+        grad_g[n+1+i-1, idx] = -1
+        grad_g[end, idx] = 1
+        idx += 1
+    end
+    
+    # Gradiente de la restricción de que el radio sea no negativo
+    grad_g[end, idx] = -1
+    
+    return grad_g
+end
+
 
 # ╔═╡ 2b10fbba-8d1a-46e7-b3d0-e68e48996084
 md"""### Resolución
@@ -377,7 +440,66 @@ Repetir con $n=5$, $n=10$, $n=50$."""
 
 
 # ╔═╡ c39bb143-67dd-4e53-ab7d-72aa3548a82a
-#completar
+function generar_datos_iniciales(n)
+    x = rand(n)
+    y = rand(n)
+    r = 0.1
+    return [x; y; r]
+end
+
+
+# ╔═╡ f103f42d-d711-4f17-863b-ceb61296da99
+
+
+# ╔═╡ 1621cfeb-c719-4b06-90a9-cddbe015a6a1
+begin
+
+	function resolver_problema(n)
+    # Generar datos iniciales
+    z0 = generar_datos_iniciales(n)
+    
+    # Resolver con el método de penalidad
+    resultado_penalidad = penalidad(area_no_ocupada, grad_area_no_ocupada, restricciones, grad_restricciones_matrix, z0)
+    valor_funcional_penalidad = area_no_ocupada(resultado_penalidad)
+    factibilidad_penalidad = evaluar_factibilidad(resultado_penalidad, restricciones)
+    
+    # Resolver con el método del Lagrangiano Aumentado
+    resultado_lagrangiano = L_aumentado(area_no_ocupada, grad_area_no_ocupada, restricciones, grad_restricciones_matrix, z0)
+    valor_funcional_lagrangiano = area_no_ocupada(resultado_lagrangiano)
+    factibilidad_lagrangiano = evaluar_factibilidad(resultado_lagrangiano, restricciones)
+    
+    return (
+        resultado_penalidad, valor_funcional_penalidad, factibilidad_penalidad,
+        resultado_lagrangiano, valor_funcional_lagrangiano, factibilidad_lagrangiano
+    )
+end
+
+# Valores de n a evaluar
+n_values = [3, 5, 10, 50]
+
+# Resolver el problema para cada valor de n
+resultados = Dict()
+for n in n_values
+    resultados[n] = resolver_problema(n)
+end
+
+# Mostrar resultados
+for n in n_values
+    println("Resultados para n = $n:")
+    println("Penalidad:")
+    println("  Resultado: ", resultados[n][1])
+    println("  Valor funcional: ", resultados[n][2])
+    println("  Factibilidad: ", resultados[n][3])
+    
+    println("Lagrangiano Aumentado:")
+    println("  Resultado: ", resultados[n][4])
+    println("  Valor funcional: ", resultados[n][5])
+    println("  Factibilidad: ", resultados[n][6])
+    println()
+end
+
+
+end
 
 # ╔═╡ 8cbc8634-e2b8-403d-81d6-f9eb0ec4d324
 md"""## Radios distintos
@@ -508,9 +630,9 @@ version = "1.0.8+1"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "a2f1c8c668c8e3cb4cca4e57a8efdb09067bb3fd"
+git-tree-sha1 = "a4c43f59baa34011e303e76f5c8c91bf58415aaf"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
-version = "1.18.0+2"
+version = "1.18.0+1"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -520,9 +642,9 @@ version = "0.7.4"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "4b270d6465eb21ae89b732182c20dc165f8bf9f2"
+git-tree-sha1 = "67c1f244b991cad9b0aa4b7540fb758c2488b129"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.25.0"
+version = "3.24.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -544,15 +666,15 @@ version = "0.10.0"
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
+git-tree-sha1 = "fc08e5930ee9a4e03f84bfb5211cb54e7769758a"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.12.11"
+version = "0.12.10"
 
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
-git-tree-sha1 = "b1c55339b7c6c350ee89f2c1604299660525b248"
+git-tree-sha1 = "c955881e3c981181362ae4088b35995446298b80"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "4.15.0"
+version = "4.14.0"
 weakdeps = ["Dates", "LinearAlgebra"]
 
     [deps.Compat.extensions]
@@ -641,9 +763,9 @@ uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
-git-tree-sha1 = "05882d6995ae5c12bb5f36dd2ed3f61c98cbb172"
+git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
-version = "0.8.5"
+version = "0.8.4"
 
 [[deps.Fontconfig_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Expat_jll", "FreeType2_jll", "JLLWrappers", "Libdl", "Libuuid_jll", "Zlib_jll"]
@@ -658,9 +780,9 @@ version = "1.3.7"
 
 [[deps.FreeType2_jll]]
 deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "5c1d8ae0efc6c2e7b1fc502cbe25def8f661b7bc"
+git-tree-sha1 = "d8db6a5a2fe1381c1ea4ef2cab7c69c2de7f9ea0"
 uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
-version = "2.13.2+0"
+version = "2.13.1+0"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -694,9 +816,9 @@ version = "0.21.0+0"
 
 [[deps.Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE2_jll", "Zlib_jll"]
-git-tree-sha1 = "7c82e6a6cd34e9d935e9aa4051b66c6ff3af59ba"
+git-tree-sha1 = "359a1ba2e320790ddbe4ee8b4d54a305c0ea2aff"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.80.2+0"
+version = "2.80.0+0"
 
 [[deps.Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -711,9 +833,9 @@ version = "1.0.2"
 
 [[deps.HTTP]]
 deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "d1d712be3164d61d1fb98e7ce9bcbc6cc06b45ed"
+git-tree-sha1 = "2c3ec1f90bb4a8f7beafb0cffea8a4c3f4e636ab"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.8"
+version = "1.10.6"
 
 [[deps.HarfBuzz_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
@@ -750,9 +872,9 @@ version = "0.21.4"
 
 [[deps.JpegTurbo_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "c84a835e1a09b289ffcd2271bf2a337bbdda6637"
+git-tree-sha1 = "3336abae9a713d2210bb57ab484b1e065edd7d23"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
-version = "3.0.3+0"
+version = "3.0.2+0"
 
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -856,9 +978,9 @@ version = "1.17.0+0"
 
 [[deps.Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "0c4f9c4f1a50d8f35048fa0532dabbadf702f81e"
+git-tree-sha1 = "4b683b19157282f50bfd5dcaa2efe5295814ea22"
 uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
-version = "2.40.1+0"
+version = "2.40.0+0"
 
 [[deps.Libtiff_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "XZ_jll", "Zlib_jll", "Zstd_jll"]
@@ -868,9 +990,9 @@ version = "4.5.1+1"
 
 [[deps.Libuuid_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "5ee6203157c120d79034c748a2acba45b82b8807"
+git-tree-sha1 = "27fd5cc10be85658cacfe11bb81bee216af13eda"
 uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
-version = "2.40.1+0"
+version = "2.40.0+0"
 
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
@@ -1007,9 +1129,9 @@ version = "1.3.0"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
-git-tree-sha1 = "35621f10a7531bc8fa58f74610b1bfb70a3cfc6b"
+git-tree-sha1 = "64779bc4c9784fee475689a1752ef4d5747c5e87"
 uuid = "30392449-352a-5448-841d-b1acce4e97dc"
-version = "0.43.4+0"
+version = "0.42.2+0"
 
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -1188,9 +1310,9 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "5d54d076465da49d6746c647022f3b3674e64156"
+git-tree-sha1 = "71509f04d045ec714c4748c785a59045c3736349"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.10.8"
+version = "0.10.7"
 weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
@@ -1216,9 +1338,9 @@ version = "0.4.1"
 
 [[deps.Unitful]]
 deps = ["Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "dd260903fdabea27d9b6021689b3cd5401a57748"
+git-tree-sha1 = "3c793be6df9dd77a0cf49d80984ef9ff996948fa"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.20.0"
+version = "1.19.0"
 
     [deps.Unitful.extensions]
     ConstructionBaseUnitfulExt = "ConstructionBase"
@@ -1259,9 +1381,9 @@ version = "1.31.0+0"
 
 [[deps.XML2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "52ff2af32e591541550bd753c0da8b9bc92bb9d9"
+git-tree-sha1 = "532e22cf7be8462035d092ff21fada7527e2c488"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.12.7+0"
+version = "2.12.6+0"
 
 [[deps.XSLT_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
@@ -1449,10 +1571,10 @@ uuid = "1a1c6b14-54f6-533d-8383-74cd7377aa70"
 version = "3.1.1+0"
 
 [[deps.libaom_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "1827acba325fdcdf1d2647fc8d5301dd9ba43a9d"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "3a2ea60308f0996d26f1e5354e10c24e9ef905d4"
 uuid = "a4ae2306-e953-59d6-aa16-d00cac43593b"
-version = "3.9.0+0"
+version = "3.4.0+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -1544,24 +1666,24 @@ version = "1.4.1+1"
 # ╠═bd026c17-69a1-4086-bbc7-b77b601f996f
 # ╟─582aed2f-5daa-48f8-8a0d-bfa2d8dcb65a
 # ╟─dcb8703a-9847-4766-8326-2b7e13ead843
-# ╠═78e95d63-7564-4f24-b765-ab8802e2c6f6
 # ╠═74975b01-7f46-43e6-8766-53bfa7d958e9
 # ╟─862e50cf-51be-4934-bddc-a5f6b97a00af
-# ╠═5ebc67a4-4543-4823-a4f8-bcd75cbdd3e2
+# ╠═3d27cf01-72cd-409f-8716-2a1c661a5cbd
 # ╟─321ea2f9-e4b4-431d-b0e1-3659c83f652c
 # ╠═1e175c6f-cddd-4006-b523-bc42e485686c
 # ╟─48e42ac2-ee32-454e-b644-1a9af0029d20
 # ╠═70f403f0-c3dd-49e2-9268-8754d7aec4c3
 # ╟─addb4cc9-e46c-4817-9277-2767e91feb11
-# ╟─0e443f77-d346-4414-8adf-82a18b90a2cf
-# ╠═3171d4dc-edd3-4b26-9adc-49fb896f5c3b
-# ╠═068222ed-3c32-44a0-af7a-bc7caae264a9
 # ╟─cba62975-6abe-4f6a-b153-ec98dcaf3ae5
-# ╠═241c09ec-8910-4213-aae4-bffe5768de6e
+# ╟─0e443f77-d346-4414-8adf-82a18b90a2cf
+# ╠═ef63e0ac-d76c-4f33-a3c0-ae67668690bd
 # ╟─ae1daad8-5e0d-4784-9e18-5e34ebab5998
+# ╠═447448e6-6339-4c9f-9ade-4f734d4f3a5d
 # ╠═1ac6a298-963d-41d3-91aa-1c59b0c2f2e0
 # ╟─2b10fbba-8d1a-46e7-b3d0-e68e48996084
 # ╠═c39bb143-67dd-4e53-ab7d-72aa3548a82a
+# ╠═f103f42d-d711-4f17-863b-ceb61296da99
+# ╠═1621cfeb-c719-4b06-90a9-cddbe015a6a1
 # ╟─8cbc8634-e2b8-403d-81d6-f9eb0ec4d324
 # ╠═33353538-8bd5-4b34-a89c-96aeac145fff
 # ╟─abdb4f85-fcb0-4881-97ae-ec024c22e4f9
