@@ -237,7 +237,7 @@ end
 md"""# Constante de penalidad 
 
 !!! note ""
-	La constante de penalidad tiene una funcion crucial en la optimizacion luego de pensar que habia algun error en el codigo de DFP exploramos con r = 1 , 5 y 10   de todos modos para valores grandes de N sigue sin ser del todo suficiente"""
+	La constante de penalidad tiene una funcion crucial en la optimizacion. Luego de pensar que habia algun error en el código de DFP exploramos con $r \in \{1,5,10\}$. De todos modos para valores grandes de $N$ sigue sin ser del todo suficiente."""
 
 # ╔═╡ dcb8703a-9847-4766-8326-2b7e13ead843
 md"""Compararemos los resultados arrojados por el método de penalidad con el método del Lagrangiado aumentado que es, en cierto sentido, una sofisticación del enfoque de penalidad.
@@ -252,6 +252,7 @@ function L_aumentado_DFP(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=50
 	function L(x)
 		return f(x) + sum((1 / (2c))*(maxz.(μ + c*g(x))).^2 - μ.^2)
 	end
+	
     # Gradiente de la función del Lagrangiano Aumentado
     function ∇L(x) 
 		return grad_f(x) + grad_g(x)*maxz.(μ + c*g(x))
@@ -282,8 +283,8 @@ function L_aumentado_BFGS(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=2
 	function L(x)
 		return f(x) + sum((1 / (2c))*(maxz.(μ + c*g(x))).^2 - μ.^2)
 	end
+	
     # Gradiente de la función del Lagrangiano Aumentado
-
     function ∇L(x) 
 		return grad_f(x) + grad_g(x)*maxz.(μ + c*g(x))
 	end
@@ -379,7 +380,7 @@ Necesitaremos implementar el funcional y su gradiente, pero también las restric
 # ╔═╡ 0e443f77-d346-4414-8adf-82a18b90a2cf
 md"""
 !!! note "Ejercicio 6"
-	El funcional a optimizar será el área **no** ocupada por cír culos. Implementar este funcional y gradiente, en términos de la variable $z$."""
+	El funcional a optimizar será el área **no** ocupada por círculos. Implementar este funcional y gradiente, en términos de la variable $z$."""
 
 # ╔═╡ 3171d4dc-edd3-4b26-9adc-49fb896f5c3b
 begin
@@ -515,7 +516,7 @@ begin
 	begin
 		function resolver_problema_penalidad_DFP(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(penalidad_DFP(f, ∇f, g, ∇g, z0))	
+	    return graficar_solucion(penalidad_DFP(f, ∇f, g, ∇g, z0; max_iter=1000))	
 		end
 		function resolver_problema_penalidad_BFGS(n)
 	    z0 = dato_inicial(n)
@@ -526,7 +527,7 @@ begin
 	begin
 		function resolver_problema_Lagrangiano_DFP(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(L_aumentado_DFP(f, ∇f, g, ∇g, z0))	
+	    return graficar_solucion(L_aumentado_DFP(f, ∇f, g, ∇g, z0; max_iter=1000))	
 		end
 		function resolver_problema_Lagrangiano_BFGS(n)
 	    z0 = dato_inicial(n)
@@ -562,15 +563,20 @@ Fue muy sensible a la random seed que genero los datos, radios muy grandes tuvo 
 resultados_penalidad_DFP[penalidad_dfp]
 
 # ╔═╡ 89f91513-6472-494f-827b-5ea3d016c078
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 resultados_Lagrangiano_BFGS = [resolver_problema_Lagrangiano_BFGS(3),resolver_problema_Lagrangiano_BFGS(5),resolver_problema_Lagrangiano_BFGS(10)];
 end
+  ╠═╡ =#
 
 # ╔═╡ d974a0fb-ed1c-4983-911d-f89023609e6b
 @bind lagrangiano_bfgs Slider(1:1:3)
 
 # ╔═╡ 13202929-bd48-4fed-8b20-9fcb5d9033aa
+#=╠═╡
 resultados_Lagrangiano_BFGS[lagrangiano_bfgs]
+  ╠═╡ =#
 
 # ╔═╡ cf9574c8-b1b9-420c-ba16-57ca0fea5e24
 md"""# N = 50 nos resulto computacionalmente imposible"""
@@ -596,7 +602,13 @@ Para resolver el problema con radios variables es necesario implementar nuevas v
 	Implementar nuevamente la función desempaquetar, dado que ahora $r\in\mathbb{R}^n$."""
 
 # ╔═╡ 33353538-8bd5-4b34-a89c-96aeac145fff
-#completar
+function desempaquetar_varios_r(z)
+    n = length(z) ÷ 3
+    x = z[1:n]
+    y = z[n+1:2n]
+    r = z[2n+1:3n]
+    return x, y, r
+end
 
 # ╔═╡ abdb4f85-fcb0-4881-97ae-ec024c22e4f9
 md"""
@@ -608,10 +620,25 @@ md"""
 
 
 # ╔═╡ 548850dd-e261-41da-bff5-b5f532d28333
-#completar
+begin
 
-# ╔═╡ 2f869f4c-79ab-472d-8704-972faf00fa18
-#completar
+# Funcional: Área no ocupada por círculos
+function f_varios_r(z)
+    x, y, r = desempaquetar_varios_r(z)
+    return 1 - sum(π * r .^2)
+end
+
+# Gradiente del funcional
+function ∇f_varios_r(z)
+    x, y, r = desempaquetar_varios_r(z)
+	n = length(x)
+    grad_r = -2π * r
+    grad_x = zeros(n)
+    grad_y = zeros(n)
+    return [grad_x; grad_y; grad_r]
+end
+
+end
 
 # ╔═╡ c03d60bc-8db0-4392-8b0e-07f6529b3943
 md"""
@@ -621,17 +648,87 @@ md"""
 
 
 # ╔═╡ be7b9372-f007-4035-8ce6-6baed88ee5de
-#completar
+function g_varios_r(z)
+	x,y,r = desempaquetar_varios_r(z)
+	n     = length(x)
+	M     = Int(n*(n-1)/2+5n)
+	res   = zeros(M)
+	k     = 1
+	for i in 1:n
+		for j in i+1:n
+			res[k]   = -(x[i]-x[j])^2 - (y[i]-y[j])^2 + (r[i]+r[j])^2
+			k       += 1
+		end
+	end
+	for i in 1:n
+		res[k]   = x[i] + r[i] - 1
+		res[k+1] = y[i] + r[i] - 1
+		res[k+2] = r[i] - x[i]
+		res[k+3] = r[i] - y[i]
+		k       +=4
+	end
+	for i in 1:n
+		res[k]   = -r[i]
+		k       += 1 
+	end
+	return res
+end
 
 # ╔═╡ 381ff285-04c3-41b9-9e4f-cb2f1613d4c7
-#completar
+function ∇g_varios_r(z)
+    x, y, r = desempaquetar_varios_r(z)
+    n = length(x)
+    M = Int((n*(n-1))/2 + 5*n)
+    grad_g = zeros(length(z), M)
+    idx = 1
+    
+    # Gradientes de las restricciones de no superposición de círculos
+    for i in 1:n
+        for j in i+1:n
+            grad_g[i, idx] = -2(x[i] - x[j])
+            grad_g[j, idx] = 2(x[i] - x[j])
+            grad_g[n+i, idx] = -2(y[i] - y[j])
+            grad_g[n+j, idx] = 2(y[i] - y[j])
+            grad_g[2n+i, idx] = 2(r[i] + r[j])
+			grad_g[2n+j, idx] = 2(r[i] + r[j])
+            idx += 1
+        end
+    end
+    
+    # Gradientes de las restricciones de estar dentro de la región 1x1
+    for i in 1:n
+        grad_g[i, idx] = 1
+        grad_g[2n+i, idx] = 1
+        idx += 1
+        
+        grad_g[n+i, idx] = 1
+        grad_g[2n+i, idx] = 1
+        idx += 1
+        
+        grad_g[i, idx] = -1
+        grad_g[2n+i, idx] = 1
+        idx += 1
+        
+        grad_g[n+i, idx] = -1
+        grad_g[2n+i, idx] = 1
+        idx += 1
+    end
+    
+    # Gradiente de la restricción de que los radios sean no negativos
+	for i in 1:n
+		grad_g[2n+i, idx] = -1
+	end
+	
+    return grad_g
+end
+
 
 # ╔═╡ 38bf24ea-b276-4725-81e6-77cc2a740847
 md"""Para completar, damos aquí la función para graficar y la función para generar el dato inicial."""
 
 # ╔═╡ 72351f53-358a-4194-869d-d12bd046f7d7
 function graficar_solucion_dist(z)
-	x,y,r = desempaquetar_dist(z)
+	x,y,r = desempaquetar_varios_r(z)
 	plot([1,1],[0,1],color=:black)
 	plot!([0,1],[1,1],color=:black)
 	plot!([0,0],[0,1],color=:black)
@@ -650,6 +747,7 @@ end
 
 # ╔═╡ 13435de2-f1df-48b4-a8e3-83cb59f7cf64
 function dato_inicial_dist(n)
+	Random.seed!(1234)
 	x = rand(n)
 	y = rand(n)
 	r = 1
@@ -672,8 +770,43 @@ md"""
 !!! note "Ejercicio 11" 
 	Realizar pruebas resolviendo el problema con distinto número de círculos, usando ambos métodos. Volver a probar con $n=3, 5, 10$ y $50$ (o más). Comparar el valor del funcional y la factibilidad de la solución. """
 
+# ╔═╡ 5922ad91-01ab-478b-a68c-4963e9c73071
+begin
+	begin
+		function resolver_problema_penalidad_DFP_varios_r(n)
+	    z0 = dato_inicial_dist(n)
+	    return graficar_solucion_dist(penalidad_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200))	
+		end
+		
+		function resolver_problema_penalidad_BFGS_varios_r(n)
+	    z0 = dato_inicial_dist(n)
+	    return graficar_solucion_dist(penalidad_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0))	
+		end
+	end
+	
+	begin
+		function resolver_problema_Lagrangiano_DFP_varios_r(n)
+	    z0 = dato_inicial_dist(n)
+	    return graficar_solucion_dist(L_aumentado_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200))	
+		end
+		
+		function resolver_problema_Lagrangiano_BFGS_varios_r(n)
+	    z0 = dato_inicial_dist(n)
+	    return graficar_solucion_dist(L_aumentado_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0))	
+		end
+	end
+end
+
 # ╔═╡ 6fe6e1bc-83df-4c24-a75d-98b1ed250929
-#completar
+begin
+resultados_Lagrangiano_BFGS_varios_r = [resolver_problema_Lagrangiano_BFGS_varios_r(3),resolver_problema_Lagrangiano_BFGS_varios_r(5),resolver_problema_Lagrangiano_BFGS_varios_r(10),resolver_problema_Lagrangiano_BFGS_varios_r(50)];
+end
+
+# ╔═╡ 1fe710b0-771b-4a03-9492-ddc6c59b991c
+@bind lagrangiano_bfgs_varios_r Slider(1:1:4)
+
+# ╔═╡ 2eb485ee-3abe-4e99-b3ca-09a1d6ff8fcc
+resultados_Lagrangiano_BFGS_varios_r[lagrangiano_bfgs_varios_r]
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -723,9 +856,9 @@ version = "1.1.1"
 
 [[deps.ArrayInterface]]
 deps = ["Adapt", "LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "ed2ec3c9b483842ae59cd273834e5b46206d6dda"
+git-tree-sha1 = "133a240faec6e074e07c31ee75619c90544179cf"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "7.11.0"
+version = "7.10.0"
 
     [deps.ArrayInterface.extensions]
     ArrayInterfaceBandedMatricesExt = "BandedMatrices"
@@ -1077,9 +1210,9 @@ version = "0.9.5"
 
 [[deps.IOCapture]]
 deps = ["Logging", "Random"]
-git-tree-sha1 = "b6d6bfdd7ce25b0f9b2f6b3dd56b2673a66c8770"
+git-tree-sha1 = "8b72179abc660bfab5e28472e019392b97d0985c"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.5"
+version = "0.2.4"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -1244,9 +1377,9 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
-git-tree-sha1 = "a2d09619db4e765091ee5c6ffe8872849de0feea"
+git-tree-sha1 = "18144f3e9cbe9b15b070288eef858f71b291ce37"
 uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
-version = "0.3.28"
+version = "0.3.27"
 
     [deps.LogExpFunctions.extensions]
     LogExpFunctionsChainRulesCoreExt = "ChainRulesCore"
@@ -1351,9 +1484,9 @@ version = "1.4.3"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "a028ee3cb5641cccc4c24e90c36b0a4f7707bdf5"
+git-tree-sha1 = "3da7367955dcc5c54c1ba4d402ccdc09a1a3e046"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "3.0.14+0"
+version = "3.0.13+1"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -1419,9 +1552,9 @@ version = "1.10.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Statistics"]
-git-tree-sha1 = "6e55c6841ce3411ccb3457ee52fc48cb698d6fb0"
+git-tree-sha1 = "1f03a2d339f42dca4a4da149c7e15e9b896ad899"
 uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
-version = "3.2.0"
+version = "3.1.0"
 
 [[deps.PlotUtils]]
 deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "Statistics"]
@@ -1577,9 +1710,9 @@ version = "2.4.0"
     ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 
 [[deps.StaticArraysCore]]
-git-tree-sha1 = "192954ef1208c7019899fbf8049e717f92959682"
+git-tree-sha1 = "36b3d696ce6366023a0ea192b4cd442268995a0d"
 uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
-version = "1.4.3"
+version = "1.4.2"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -1628,9 +1761,9 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[deps.TranscodingStreams]]
-git-tree-sha1 = "a947ea21087caba0a798c5e494d0bb78e3a1a3a0"
+git-tree-sha1 = "5d54d076465da49d6746c647022f3b3674e64156"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.10.9"
+version = "0.10.8"
 weakdeps = ["Random", "Test"]
 
     [deps.TranscodingStreams.extensions]
@@ -2026,15 +2159,14 @@ version = "1.4.1+1"
 # ╠═89f91513-6472-494f-827b-5ea3d016c078
 # ╠═d974a0fb-ed1c-4983-911d-f89023609e6b
 # ╠═13202929-bd48-4fed-8b20-9fcb5d9033aa
-# ╠═cf9574c8-b1b9-420c-ba16-57ca0fea5e24
-# ╠═3845d9ff-e886-40bf-ba10-f6e9d48300a9
+# ╟─cf9574c8-b1b9-420c-ba16-57ca0fea5e24
+# ╟─3845d9ff-e886-40bf-ba10-f6e9d48300a9
 # ╠═faf34215-d338-4f36-9360-c6a6e01ae833
 # ╠═494cd70b-e5d6-46af-b3b4-b811db16f32c
 # ╟─8cbc8634-e2b8-403d-81d6-f9eb0ec4d324
 # ╠═33353538-8bd5-4b34-a89c-96aeac145fff
 # ╟─abdb4f85-fcb0-4881-97ae-ec024c22e4f9
 # ╠═548850dd-e261-41da-bff5-b5f532d28333
-# ╠═2f869f4c-79ab-472d-8704-972faf00fa18
 # ╟─c03d60bc-8db0-4392-8b0e-07f6529b3943
 # ╠═be7b9372-f007-4035-8ce6-6baed88ee5de
 # ╠═381ff285-04c3-41b9-9e4f-cb2f1613d4c7
@@ -2042,6 +2174,9 @@ version = "1.4.1+1"
 # ╠═72351f53-358a-4194-869d-d12bd046f7d7
 # ╠═13435de2-f1df-48b4-a8e3-83cb59f7cf64
 # ╟─0ace61c4-6bbc-4f5d-a51c-09f91c21affd
+# ╠═5922ad91-01ab-478b-a68c-4963e9c73071
 # ╠═6fe6e1bc-83df-4c24-a75d-98b1ed250929
+# ╟─1fe710b0-771b-4a03-9492-ddc6c59b991c
+# ╟─2eb485ee-3abe-4e99-b3ca-09a1d6ff8fcc
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
