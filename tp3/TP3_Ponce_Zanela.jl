@@ -234,7 +234,7 @@ end
 end
 
 # ╔═╡ e3e95d2e-15b2-4bba-930e-9f22a8048285
-md"""# Constante de penalidad 
+md"""## Constante de penalidad 
 
 !!! note ""
 	La constante de penalidad tiene una funcion crucial en la optimizacion. Luego de pensar que habia algun error en el código de DFP exploramos con $r \in \{1,5,10\}$. De todos modos para valores grandes de $N$ sigue sin ser del todo suficiente."""
@@ -246,7 +246,7 @@ md"""Compararemos los resultados arrojados por el método de penalidad con el m�
 	Implementar una función similar a la anterior, que reciba parámetros `f`, `∇f`, `g`, `∇g` y un dato inicial `z` y aplique el método del Lagrangiano aumentado, asumiendo que las restricciones son sólo de desigualdad. """
 
 # ╔═╡ 74975b01-7f46-43e6-8766-53bfa7d958e9
-function L_aumentado_DFP(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=500)
+function L_aumentado_DFP(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=1000)
     µ = zeros(length(g(x0)))
 
 	function L(x)
@@ -271,13 +271,13 @@ function L_aumentado_DFP(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=50
         µ = max.(0, µ + c * gx)  
     end
     
-    println("Maximo iteraciones alcanzados")
+    println("Maximo iteraciones alcanzado")
     return x_k
 end
 
 
 # ╔═╡ 59f76ec2-ade9-47cf-a36f-d9327df67270
-function L_aumentado_BFGS(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=250)
+function L_aumentado_BFGS(f, grad_f, g, grad_g, x0; tol=1e-5, max_iter=5000, c=500)
     µ = zeros(length(g(x0)))
 	
 	function L(x)
@@ -516,22 +516,25 @@ begin
 	begin
 		function resolver_problema_penalidad_DFP(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(penalidad_DFP(f, ∇f, g, ∇g, z0; max_iter=1000))	
+		solucion = penalidad_DFP(f, ∇f, g, ∇g, z0; max_iter=1000)
+	    return solucion
 		end
+		
 		function resolver_problema_penalidad_BFGS(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(penalidad_BFGS(f, ∇f, g, ∇g, z0))	
+	    return penalidad_BFGS(f, ∇f, g, ∇g, z0)	
 		end
 	end
 	
 	begin
 		function resolver_problema_Lagrangiano_DFP(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(L_aumentado_DFP(f, ∇f, g, ∇g, z0; max_iter=1000))	
+	    return L_aumentado_DFP(f, ∇f, g, ∇g, z0; max_iter=1000)
 		end
+		
 		function resolver_problema_Lagrangiano_BFGS(n)
 	    z0 = dato_inicial(n)
-	    return graficar_solucion(L_aumentado_BFGS(f, ∇f, g, ∇g, z0))	
+	    return L_aumentado_BFGS(f, ∇f, g, ∇g, z0)
 		end
 	end
 end
@@ -542,56 +545,77 @@ resultados_penalidad_BFGS = [resolver_problema_penalidad_BFGS(3),resolver_proble
 end
 
 # ╔═╡ 0dbbfc37-37c8-4e30-a3c2-3123f0e4732a
-@bind penalidad_bfgs Slider(1:1:4)
+@bind penalidad_bfgs Slider(1:1:3)
 
 # ╔═╡ 43165bad-ecca-48ae-b645-0f0c0674eb98
-resultados_penalidad_BFGS[penalidad_bfgs]
+graficar_solucion(resultados_penalidad_BFGS[penalidad_bfgs])
+
+# ╔═╡ 0277c5d9-fdef-404a-bfc5-d48fbd57c79a
+println("El valor del funcional es: ", f(resultados_penalidad_BFGS[penalidad_bfgs]))
+
+# ╔═╡ fc00e604-5bb3-47bc-b736-ac555e8bb497
+md"""## Performance de DFP
+
+!!! note ""
+Fue muy sensible a la random seed que generó los datos. En algunos casos, radios muy grandes trajeron problemas. Hubo serios inconvenientes para encontrar una solucion para N = 50, que nos terminó resultando computacionalmente imposible con DFP, mientras que con BFGS anduvo."""
 
 # ╔═╡ bb6d61f2-3814-4029-906e-ea7a983af1b9
 resultados_penalidad_DFP = [resolver_problema_penalidad_DFP(3),resolver_problema_penalidad_DFP(5),resolver_problema_penalidad_DFP(10),resolver_problema_penalidad_DFP(50)];
 
 # ╔═╡ dc5d63eb-dd43-4f91-942e-894f8896057c
-@bind penalidad_dfp Slider(1:1:4)
-
-# ╔═╡ fc00e604-5bb3-47bc-b736-ac555e8bb497
-md"""# Performance de DFP
-
-!!! note ""
-Fue muy sensible a la random seed que genero los datos, radios muy grandes tuvo serios problemas para encontrar una solucion para N = 50"""
+@bind penalidad_dfp Slider(1:1:3)
 
 # ╔═╡ cf502ec4-9e76-408a-b7fb-56474dc74e00
-resultados_penalidad_DFP[penalidad_dfp]
+graficar_solucion(resultados_penalidad_DFP[penalidad_dfp])
 
-# ╔═╡ 89f91513-6472-494f-827b-5ea3d016c078
-# ╠═╡ disabled = true
-#=╠═╡
-begin
-resultados_Lagrangiano_BFGS = [resolver_problema_Lagrangiano_BFGS(3),resolver_problema_Lagrangiano_BFGS(5),resolver_problema_Lagrangiano_BFGS(10)];
-end
-  ╠═╡ =#
-
-# ╔═╡ d974a0fb-ed1c-4983-911d-f89023609e6b
-@bind lagrangiano_bfgs Slider(1:1:3)
-
-# ╔═╡ 13202929-bd48-4fed-8b20-9fcb5d9033aa
-#=╠═╡
-resultados_Lagrangiano_BFGS[lagrangiano_bfgs]
-  ╠═╡ =#
-
-# ╔═╡ cf9574c8-b1b9-420c-ba16-57ca0fea5e24
-md"""# N = 50 nos resulto computacionalmente imposible"""
+# ╔═╡ 78dab6b3-b825-4044-9ad3-c0b17e102df9
+println("El valor del funcional es: ", f(resultados_penalidad_DFP[penalidad_dfp]))
 
 # ╔═╡ 3845d9ff-e886-40bf-ba10-f6e9d48300a9
-md"""# Performance de DFP en Lagrangiano
+md"""## Performance de DFP en Lagrangiano
 
-!!! note ""
-Necesito una constante de penalidad el doble de grande (500) para poder correr el caso con N = 3"""
+!!! note "" 
+	Necesito una constante de penalidad el doble de grande (500) para poder correr el caso con $N = 3$
+"""
 
 # ╔═╡ faf34215-d338-4f36-9360-c6a6e01ae833
-resolver_problema_Lagrangiano_DFP(3)
+begin
+	sol_ladfp3 = resolver_problema_Lagrangiano_DFP(3)
+	graficar_solucion(sol_ladfp3)
+end
+
+# ╔═╡ 5a11ba3a-e86e-4331-a64a-9f0782867852
+println("El valor del funcional es ", f(sol_ladfp3))
 
 # ╔═╡ 494cd70b-e5d6-46af-b3b4-b811db16f32c
-resolver_problema_Lagrangiano_DFP(5)
+begin
+	sol_ladfp5 = resolver_problema_Lagrangiano_DFP(5)
+	graficar_solucion(sol_ladfp5)
+end
+
+# ╔═╡ 72b925bc-fa87-4e56-b97d-a1526fdd7f98
+println("El valor del funcional es ", f(sol_ladfp5))
+
+# ╔═╡ 2c491adb-d216-4503-89c2-f925e7b30d6a
+md"""
+
+!!! note ""
+	Con BFGS el algoritmo de Lagrangiano aumentado anduvo bien
+"""
+
+# ╔═╡ 89f91513-6472-494f-827b-5ea3d016c078
+begin
+resultados_Lagrangiano_BFGS = [resolver_problema_Lagrangiano_BFGS(3),resolver_problema_Lagrangiano_BFGS(5),resolver_problema_Lagrangiano_BFGS(10),resolver_problema_Lagrangiano_BFGS(50)];
+end
+
+# ╔═╡ d974a0fb-ed1c-4983-911d-f89023609e6b
+@bind lagrangiano_bfgs Slider(1:1:4)
+
+# ╔═╡ 31cf573d-d1a8-41bf-bdfb-993b362ea725
+graficar_solucion(resultados_Lagrangiano_BFGS[lagrangiano_bfgs])
+
+# ╔═╡ 324468f4-c22f-4220-8e5e-4be3f60cd045
+println("El valor del funcional es: ", f(resultados_Lagrangiano_BFGS[lagrangiano_bfgs]))
 
 # ╔═╡ 8cbc8634-e2b8-403d-81d6-f9eb0ec4d324
 md"""## Radios distintos
@@ -717,6 +741,7 @@ function ∇g_varios_r(z)
     # Gradiente de la restricción de que los radios sean no negativos
 	for i in 1:n
 		grad_g[2n+i, idx] = -1
+		idx +=1
 	end
 	
     return grad_g
@@ -775,38 +800,79 @@ begin
 	begin
 		function resolver_problema_penalidad_DFP_varios_r(n)
 	    z0 = dato_inicial_dist(n)
-	    return graficar_solucion_dist(penalidad_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200))	
+		solucion = penalidad_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200)
+	    return solucion	
 		end
 		
 		function resolver_problema_penalidad_BFGS_varios_r(n)
 	    z0 = dato_inicial_dist(n)
-	    return graficar_solucion_dist(penalidad_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0))	
+		solucion = penalidad_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0)
+	    return solucion
 		end
 	end
 	
 	begin
 		function resolver_problema_Lagrangiano_DFP_varios_r(n)
 	    z0 = dato_inicial_dist(n)
-	    return graficar_solucion_dist(L_aumentado_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200))	
+	    return L_aumentado_DFP(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0; max_iter=200)
 		end
 		
 		function resolver_problema_Lagrangiano_BFGS_varios_r(n)
 	    z0 = dato_inicial_dist(n)
-	    return graficar_solucion_dist(L_aumentado_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0))	
+	    return L_aumentado_BFGS(f_varios_r, ∇f_varios_r, g_varios_r, ∇g_varios_r, z0)
 		end
 	end
 end
 
+# ╔═╡ 2c070870-3485-4335-924f-7763e6361640
+md"""
+!!! note ""
+	Lagrangiano aumentado con BFGS
+"""
+
 # ╔═╡ 6fe6e1bc-83df-4c24-a75d-98b1ed250929
 begin
 resultados_Lagrangiano_BFGS_varios_r = [resolver_problema_Lagrangiano_BFGS_varios_r(3),resolver_problema_Lagrangiano_BFGS_varios_r(5),resolver_problema_Lagrangiano_BFGS_varios_r(10),resolver_problema_Lagrangiano_BFGS_varios_r(50)];
+funcionales_labfgs = f_varios_r.(resultados_Lagrangiano_BFGS_varios_r)
 end
 
 # ╔═╡ 1fe710b0-771b-4a03-9492-ddc6c59b991c
 @bind lagrangiano_bfgs_varios_r Slider(1:1:4)
 
-# ╔═╡ 2eb485ee-3abe-4e99-b3ca-09a1d6ff8fcc
-resultados_Lagrangiano_BFGS_varios_r[lagrangiano_bfgs_varios_r]
+# ╔═╡ 6372aa7c-d81a-407c-bdba-a767d08b5ee9
+graficar_solucion_dist(resultados_Lagrangiano_BFGS_varios_r[lagrangiano_bfgs_varios_r])
+
+# ╔═╡ 34ecd572-3cfa-4229-b178-3b935d32f459
+println("El valor del funcional es ", funcionales_labfgs[lagrangiano_bfgs_varios_r])
+
+# ╔═╡ a7693da0-f23f-4ecb-aae5-f9f7756c2a4b
+md"""
+!!! note ""
+	Penalidad con BFGS
+"""
+
+# ╔═╡ 22676f68-b75c-44c2-ae74-0025f34958b8
+begin
+resultados_penalidad_BFGS_varios_r = [resolver_problema_penalidad_BFGS_varios_r(3),resolver_problema_penalidad_BFGS_varios_r(5),resolver_problema_penalidad_BFGS_varios_r(10),resolver_problema_penalidad_BFGS_varios_r(50)];
+funcionales_penbfgs = f_varios_r.(resultados_penalidad_BFGS_varios_r)
+end
+
+# ╔═╡ 0c792e72-1067-4f19-8c07-d4b7b54f61e2
+@bind penalidad_bfgs_varios_r Slider(1:1:4)
+
+# ╔═╡ 066e55f1-cefe-4851-9574-4d2f3cdcbd5c
+graficar_solucion_dist(resultados_penalidad_BFGS_varios_r[penalidad_bfgs_varios_r])
+
+# ╔═╡ f03abc15-4696-46de-9e05-92c2fb28e165
+println("El valor del funcional es ", funcionales_penbfgs[penalidad_bfgs_varios_r])
+
+# ╔═╡ bdfc7d30-4b06-4dbd-8d5c-c91983e4c980
+md"""
+!!! note "Conclusiones" 
+	El método de penalidad con BFGS terminó siendo el mejor algoritmo para el problema de radios variables, dado que produjo soluciones factibles en todos los casos, y con un tiempo de cómputo significativamente menor que los demás algoritmos en el caso $N=50$.
+"""
+
+
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2128,7 +2194,7 @@ version = "1.4.1+1"
 # ╟─582aed2f-5daa-48f8-8a0d-bfa2d8dcb65a
 # ╠═4add1b6c-6866-41fd-8c1b-086fc781aa2c
 # ╠═b5775ff0-7adf-4b66-8360-ffa17a6df078
-# ╟─e3e95d2e-15b2-4bba-930e-9f22a8048285
+# ╠═e3e95d2e-15b2-4bba-930e-9f22a8048285
 # ╟─dcb8703a-9847-4766-8326-2b7e13ead843
 # ╠═74975b01-7f46-43e6-8766-53bfa7d958e9
 # ╠═59f76ec2-ade9-47cf-a36f-d9327df67270
@@ -2151,18 +2217,23 @@ version = "1.4.1+1"
 # ╠═24b0fd82-f98c-4439-9fa1-5df536389a0b
 # ╠═d06beaed-6d43-4113-bc9c-3b5c16ef1536
 # ╠═0dbbfc37-37c8-4e30-a3c2-3123f0e4732a
-# ╠═43165bad-ecca-48ae-b645-0f0c0674eb98
+# ╟─43165bad-ecca-48ae-b645-0f0c0674eb98
+# ╟─0277c5d9-fdef-404a-bfc5-d48fbd57c79a
+# ╟─fc00e604-5bb3-47bc-b736-ac555e8bb497
 # ╠═bb6d61f2-3814-4029-906e-ea7a983af1b9
-# ╠═dc5d63eb-dd43-4f91-942e-894f8896057c
-# ╠═fc00e604-5bb3-47bc-b736-ac555e8bb497
-# ╠═cf502ec4-9e76-408a-b7fb-56474dc74e00
-# ╠═89f91513-6472-494f-827b-5ea3d016c078
-# ╠═d974a0fb-ed1c-4983-911d-f89023609e6b
-# ╠═13202929-bd48-4fed-8b20-9fcb5d9033aa
-# ╟─cf9574c8-b1b9-420c-ba16-57ca0fea5e24
+# ╟─dc5d63eb-dd43-4f91-942e-894f8896057c
+# ╟─cf502ec4-9e76-408a-b7fb-56474dc74e00
+# ╟─78dab6b3-b825-4044-9ad3-c0b17e102df9
 # ╟─3845d9ff-e886-40bf-ba10-f6e9d48300a9
-# ╠═faf34215-d338-4f36-9360-c6a6e01ae833
-# ╠═494cd70b-e5d6-46af-b3b4-b811db16f32c
+# ╟─faf34215-d338-4f36-9360-c6a6e01ae833
+# ╟─5a11ba3a-e86e-4331-a64a-9f0782867852
+# ╟─494cd70b-e5d6-46af-b3b4-b811db16f32c
+# ╟─72b925bc-fa87-4e56-b97d-a1526fdd7f98
+# ╟─2c491adb-d216-4503-89c2-f925e7b30d6a
+# ╠═89f91513-6472-494f-827b-5ea3d016c078
+# ╟─d974a0fb-ed1c-4983-911d-f89023609e6b
+# ╟─31cf573d-d1a8-41bf-bdfb-993b362ea725
+# ╟─324468f4-c22f-4220-8e5e-4be3f60cd045
 # ╟─8cbc8634-e2b8-403d-81d6-f9eb0ec4d324
 # ╠═33353538-8bd5-4b34-a89c-96aeac145fff
 # ╟─abdb4f85-fcb0-4881-97ae-ec024c22e4f9
@@ -2175,8 +2246,16 @@ version = "1.4.1+1"
 # ╠═13435de2-f1df-48b4-a8e3-83cb59f7cf64
 # ╟─0ace61c4-6bbc-4f5d-a51c-09f91c21affd
 # ╠═5922ad91-01ab-478b-a68c-4963e9c73071
+# ╟─2c070870-3485-4335-924f-7763e6361640
 # ╠═6fe6e1bc-83df-4c24-a75d-98b1ed250929
 # ╟─1fe710b0-771b-4a03-9492-ddc6c59b991c
-# ╟─2eb485ee-3abe-4e99-b3ca-09a1d6ff8fcc
+# ╟─6372aa7c-d81a-407c-bdba-a767d08b5ee9
+# ╟─34ecd572-3cfa-4229-b178-3b935d32f459
+# ╟─a7693da0-f23f-4ecb-aae5-f9f7756c2a4b
+# ╠═22676f68-b75c-44c2-ae74-0025f34958b8
+# ╟─0c792e72-1067-4f19-8c07-d4b7b54f61e2
+# ╟─066e55f1-cefe-4851-9574-4d2f3cdcbd5c
+# ╟─f03abc15-4696-46de-9e05-92c2fb28e165
+# ╟─bdfc7d30-4b06-4dbd-8d5c-c91983e4c980
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
